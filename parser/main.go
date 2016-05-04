@@ -216,7 +216,23 @@ func (l *lexer) trim() {
 	l.start = l.pos
 }
 
-func lexSyntax(l *lexer) stateFn {
+func lexSchema(l *lexer) stateFn {
+	// Ignore whitespace, it doesn't matter
+	l.trim()
+	switch r := l.next(); {
+	case r == '=':
+		l.emit(itemEq)
+	case r == ';':
+		l.emit(itemSemiColon)
+	case r == eof:
+		return lexEnd
+	default:
+		return l.errorf("unrecognized character in action: %#U", r)
+	}
+	return lexSchema
+}
+
+func lexIdentifer(l *lexer) stateFn {
 	items := map[string]itemType{
 		"syntax":     itemSyntax,
 		"=":          itemEq,
@@ -234,67 +250,6 @@ func lexSyntax(l *lexer) stateFn {
 	if r := l.next(); r != ';' {
 		return l.errorf("proto file must start with 'syntax = \"proto3\";")
 	}
-	l.emit(itemSemiColon)
-	l.trim()
-	return lexTopLevel
-}
-
-func lexTopLevel(l *lexer) stateFn {
-	switch r := l.peek(); {
-	case r == 'i': // import
-		return lexImport
-	case r == 'o': // option
-	case r == 'p': // package
-	case r == 'm': // message
-	case r == 'e': // enum
-	case r == 's': // service
-	case r == 'r': // rpx
-	case r == ';': // empty
-	}
-	return lexEnd
-}
-
-// Import Statement
-func lexImport(l *lexer) stateFn {
-	if strings.HasPrefix(l.input[l.pos:], "import") {
-		l.pos += Pos(len("import"))
-		l.emit(itemImport)
-		l.trim()
-		return lexImportWeak
-	} else {
-		return l.errorf("import statement must start with 'import'")
-	}
-}
-
-func lexImportWeak(l *lexer) stateFn {
-	if strings.HasPrefix(l.input[l.pos:], "weak") {
-		l.pos += Pos(len("weak"))
-		l.emit(itemImportWeak)
-		l.trim()
-	}
-	return lexImportPublic
-}
-
-func lexImportPublic(l *lexer) stateFn {
-	if strings.HasPrefix(l.input[l.pos:], "public") {
-		l.pos += Pos(len("public"))
-		l.emit(itemImportPublic)
-		l.trim()
-	}
-	return lexImportPath
-}
-
-func lexImportPath(l *lexer) stateFn {
-	// Should be a string literal
-	if strings.HasPrefix(l.input[l.pos:], "\"other.proto\"") {
-		l.pos += Pos(len("\"other.proto\""))
-		l.emit(itemStrLit)
-		l.trim()
-	}
-	if r := l.next(); r != ';' {
-		return l.errorf("proto file must start with 'syntax = \"proto3\";")
-	}
-	l.emit(itemSemiColon)
 	l.trim()
 	return lexTopLevel
 }
