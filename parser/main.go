@@ -2,7 +2,7 @@ package parser
 
 import (
 	"fmt"
-	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -22,6 +22,20 @@ type item struct {
 	val string   // The value of this item.
 }
 
+func (i item) String() string {
+	switch {
+	case i.typ == itemEOF:
+		return "EOF"
+	case i.typ == itemError:
+		return i.val
+	case i.typ > itemKeyword:
+		return fmt.Sprintf("<%s>", i.val)
+	case len(i.val) > 10:
+		return fmt.Sprintf("%.10q...", i.val)
+	}
+	return fmt.Sprintf("%q", i.val)
+}
+
 // https://developers.google.com/protocol-buffers/docs/reference/proto3-spec#string_literals
 // itemType identifies the type of lex items.
 type itemType int
@@ -30,97 +44,26 @@ const (
 	itemError itemType = iota // error occurred; value is text of error
 	itemEOF                   // end
 
-	// letters and digits
-	itemLetter        // "A" … "Z" | "a" … "z"
-	itemCapitalLetter //  "A" … "Z"
-	itemDecimalDigit  // "0" … "9"
-	itemOctalDigit    // "0" … "7"
-	itemHexDigit      // "0" … "9" | "A" … "F" | "a" … "f"
-
-	// identifiers
-	itemIdent       // letter { letter | unicodeDigit | "_" }
-	itemFullIdent   // ident { "." ident }
-	itemMessageName // ident
-	itemEnumName    // ident
-	itemFieldName   // ident
-	itemOneofName   // ident
-	itemMapName     // ident
-	itemServiceName // ident
-	itemRPCName     // ident
-	itemMessageType // [ "." ] { ident "." } messageName
-	itemEnumType    // [ "." ] { ident "." } enumName
-
-	// integer literals
-	itemIntLit     // decimalLit | octalLit | hexLit
-	itemDecimalLit // ( "1" … "9" ) { decimalDigit }
-	itemOctalLit   // "0" { octalDigit }
-	itemHexLit     // "0" ( "x" | "X" ) hexDigit { hexDigit }
-
-	// floating-point literals
-	itemFloatLit // decimals "." [ decimals ] [ exponent ] | decimals exponent | "."decimals [ exponent ]
-	itemDecimals // decimalDigit { decimalDigit }
-	itemExponent // ( "e" | "E" ) [ "+" | "-" ] decimals
-
-	// boolean
-	itemBoolLit // "true" | "false"
-
-	// string literals
+	itemDot        // .
+	itemEq         // =
+	itemSemiColon  // ;
+	itemLeftBrace  // {
+	itemRightBrace // }
+	itemIdent      // letter { letter | unicodeDigit | "_" }
+	itemFullIdent  // ident { "." ident }
 	itemStrLit     // ( "'" { charValue } "'" ) |  ( '"' { charValue } '"' )
-	itemCharValue  // hexEscape | octEscape | charEscape | /[^\0\n\\]/
-	itemHexEscape  // '\' ( "x" | "X" ) hexDigit hexDigit
-	itemOctEscape  // '\' octalDigit octalDigit octalDigit
-	itemCharEscape // '\' ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | '\' | "'" | '"' )
-	itemQuote      // "'" | '"'
+	itemComment    // // comment
 
-	// empty
-	itemEq             // "="
-	itemSemiColon      // ";"
-	itemEmptyStatement // ";"
-	itemConstant       // fullIdent | ( [ "-" | "+" ] intLit ) | ( [ "-" | "+" ] floatLit ) | strLit | boolLit
-	itemSyntax         // "proto3" quote ";"
-	itemProto3         // quote "proto3" quote ";"
-
-	itemImport // "import" [ "weak" | "public" ] strLit ";"
-	itemImportWeak
-	itemImportPublic
-
-	itemPackage // "package" fullIdent ";"
-
-	// option
-	itemOption     // "option" optionName  "=" constant ";"
-	itemOptionName // ( ident | "(" fullIdent ")" ) { "." ident }
-
-	// fields
-	itemFieldType   // "double" | "float" | "int32" | "int64" | "uint32" | "uint64" | "sint32" | "sint64" | "fixed32" | "fixed64" | "sfixed32" | "sfixed64" | "bool" | "string" | "bytes" | messageType | enumType
-	itemFieldNumber // intLit;
-
-	itemField        // [ "repeated" ] type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
-	itemFieldOptions // fieldOption { ","  fieldOption }
-	itmeFieldOption  // optionName "=" constant
-
-	itemOneOf      // "oneof" oneofName "{" { oneofField | emptyStatement } "}"
-	itemOneOfField // type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
-
-	itemMapField // "map" "<" keyType "," type ">" mapName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
-	itemKeyType  // "int32" | "int64" | "uint32" | "uint64" | "sint32" | "sint64" | "fixed32" | "fixed64" | "sfixed32" | "sfixed64" | "bool" | "string"
-
-	itemReserved   // "reserved" ( ranges | fieldNames ) ";"
-	itemFieldNames // fieldName { "," fieldName }
-
-	// top level
-	itemEnum            // "enum" enumName enumBody
-	itemEnumBody        // "{" { option | enumField | emptyStatement } "}"
-	itemEnumField       // ident "=" intLit [ "[" enumValueOption { ","  enumValueOption } "]" ]";"
-	itemEnumValueOption // optionName "=" constant
-
-	itemMessage     // "message" messageName messageBody
-	itemMessageBody // "{" { field | enum | message | option | oneof | mapField | reserved | emptyStatement } "}"
-
-	itemService // "service" serviceName "{" { option | rpc | stream | emptyStatement } "}"
-	itemRPC     // "rpc" rpcName "(" [ "stream" ] messageType ")" "returns" "(" [ "stream" ] messageType // ")" (( "{" {option | emptyStatement } "}" ) | ";")
-
-	itemProto       // syntax { import | package | option | topLevelDef | emptyStatement }
-	itemTopLevelDef // message | enum | service
+	// keywords
+	itemKeyword
+	itemSyntax       // syntax
+	itemMessage      // message
+	itemEnum         // enum
+	itemImport       // import
+	itemImportWeak   // weak
+	itemImportPublic // public
+	itemPackage      // package
+	itemOption       // option
 )
 
 // stateFn represents the state of the scanner as a function that returns the next state.
@@ -160,7 +103,7 @@ func lex(name, input string) (*lexer, chan item) {
 // run lexes the input by executing state functions until
 // the state is nil.
 func (l *lexer) run() {
-	for state := lexSyntax; state != nil; {
+	for state := lexSchema; state != nil; {
 		state = state(l)
 	}
 	close(l.items) // No more tokens will be delivered.
@@ -220,10 +163,21 @@ func lexSchema(l *lexer) stateFn {
 	// Ignore whitespace, it doesn't matter
 	l.trim()
 	switch r := l.next(); {
+	case r == '{':
+		l.emit(itemLeftBrace)
+	case r == '}':
+		l.emit(itemRightBrace)
 	case r == '=':
 		l.emit(itemEq)
+	case r == '"':
+		return lexQuote
 	case r == ';':
 		l.emit(itemSemiColon)
+	case r == '/':
+		return lexComment
+	case isAlphaNumeric(r):
+		l.backup()
+		return lexIdent
 	case r == eof:
 		return lexEnd
 	default:
@@ -232,29 +186,91 @@ func lexSchema(l *lexer) stateFn {
 	return lexSchema
 }
 
-func lexIdentifer(l *lexer) stateFn {
-	items := map[string]itemType{
-		"syntax":     itemSyntax,
-		"=":          itemEq,
-		"\"proto3\"": itemProto3,
+var key = map[string]itemType{
+	"syntax":  itemSyntax,
+	"import":  itemImport,
+	"weak":    itemImportWeak,
+	"public":  itemImportPublic,
+	"message": itemMessage,
+	"enum":    itemEnum,
+	"option":  itemOption,
+}
+
+func lexComment(l *lexer) stateFn {
+	if l.next() != '/' {
+		return l.errorf("comments must start with two backslashes")
 	}
-	for _, tok := range []string{"syntax", "=", "\"proto3\""} {
-		l.trim()
-		if strings.HasPrefix(l.input[l.pos:], tok) {
-			l.pos += Pos(len(tok))
-			l.emit(items[tok])
-			continue
+	for {
+		r := l.next()
+		if r == '\n' || r == '\r' || r == eof {
+			l.emit(itemComment)
+			return lexSchema
 		}
-		return l.errorf("proto file must start with 'syntax = \"proto3\";")
 	}
-	if r := l.next(); r != ';' {
-		return l.errorf("proto file must start with 'syntax = \"proto3\";")
+}
+
+// lexIdentifier scans an alphanumeric.
+func lexIdent(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case isAlphaNumeric(r):
+			// absorb.
+		default:
+			l.backup()
+			word := l.input[l.start:l.pos]
+			switch {
+			case word == "package":
+				l.trim()
+				return lexFullIdent
+			case key[word] != itemError:
+				l.emit(key[word])
+				return lexSchema
+			default:
+				l.emit(itemIdent)
+				return lexSchema
+			}
+		}
 	}
-	l.trim()
-	return lexTopLevel
+}
+
+// lexIdentifier scans an alphanumeric.
+func lexFullIdent(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case isAlphaNumeric(r) || r == '.': // wrong
+			// absorb.
+		default:
+			l.backup()
+			l.emit(itemFullIdent)
+			return lexSchema
+		}
+	}
+}
+
+// lexQuote scans a quoted string.
+func lexQuote(l *lexer) stateFn {
+	for {
+		switch l.next() {
+		//case '\\':
+		//	if r := l.next(); r != eof && r != '\n' {
+		//		break
+		//	}
+		//	fallthrough
+		case eof, '\n':
+			return l.errorf("unterminated quoted string")
+		case '"':
+			l.emit(itemStrLit)
+			return lexSchema
+		}
+	}
 }
 
 func lexEnd(l *lexer) stateFn {
 	l.emit(itemEOF)
 	return nil
+}
+
+// isAlphaNumeric reports whether r is an alphabetic, digit, or underscore.
+func isAlphaNumeric(r rune) bool {
+	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
 }
