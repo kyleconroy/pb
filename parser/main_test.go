@@ -4,6 +4,8 @@ import "testing"
 
 const protoSimple = `syntax = "proto3";
 
+import public "other.proto";
+
 message SearchRequest {
   string query = 1;
   int32 page_number = 2;

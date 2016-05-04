@@ -73,11 +73,18 @@ const (
 	itemQuote      // "'" | '"'
 
 	// empty
+	itemEq             // "="
+	itemSemiColon      // ";"
 	itemEmptyStatement // ";"
 	itemConstant       // fullIdent | ( [ "-" | "+" ] intLit ) | ( [ "-" | "+" ] floatLit ) | strLit | boolLit
-	itemSyntax         // "syntax" "=" quote "proto3" quote ";"
-	itemImport         // "import" [ "weak" | "public" ] strLit ";"
-	itemPackage        // "package" fullIdent ";"
+	itemSyntax         // "proto3" quote ";"
+	itemProto3         // quote "proto3" quote ";"
+
+	itemImport // "import" [ "weak" | "public" ] strLit ";"
+	itemImportWeak
+	itemImportPublic
+
+	itemPackage // "package" fullIdent ";"
 
 	// option
 	itemOption     // "option" optionName  "=" constant ";"
@@ -198,7 +205,7 @@ func (l *lexer) backup() {
 
 // isSpace reports whether r is a space character.
 func isSpace(r rune) bool {
-	return r == ' ' || r == '\t'
+	return r == ' ' || r == '\t' || r == '\n'
 }
 
 // Consume spaces
@@ -206,19 +213,90 @@ func (l *lexer) trim() {
 	for isSpace(l.peek()) {
 		l.next()
 	}
+	l.start = l.pos
 }
 
 func lexSyntax(l *lexer) stateFn {
-	for _, tok := range []string{"syntax", "=", "\"proto3\";"} {
+	items := map[string]itemType{
+		"syntax":     itemSyntax,
+		"=":          itemEq,
+		"\"proto3\"": itemProto3,
+	}
+	for _, tok := range []string{"syntax", "=", "\"proto3\""} {
 		l.trim()
 		if strings.HasPrefix(l.input[l.pos:], tok) {
 			l.pos += Pos(len(tok))
+			l.emit(items[tok])
 			continue
 		}
 		return l.errorf("proto file must start with 'syntax = \"proto3\";")
 	}
-	l.emit(itemSyntax)
+	if r := l.next(); r != ';' {
+		return l.errorf("proto file must start with 'syntax = \"proto3\";")
+	}
+	l.emit(itemSemiColon)
+	l.trim()
+	return lexTopLevel
+}
+
+func lexTopLevel(l *lexer) stateFn {
+	switch r := l.peek(); {
+	case r == 'i': // import
+		return lexImport
+	case r == 'o': // option
+	case r == 'p': // package
+	case r == 'm': // message
+	case r == 'e': // enum
+	case r == 's': // service
+	case r == 'r': // rpx
+	case r == ';': // empty
+	}
 	return lexEnd
+}
+
+// Import Statement
+func lexImport(l *lexer) stateFn {
+	if strings.HasPrefix(l.input[l.pos:], "import") {
+		l.pos += Pos(len("import"))
+		l.emit(itemImport)
+		l.trim()
+		return lexImportWeak
+	} else {
+		return l.errorf("import statement must start with 'import'")
+	}
+}
+
+func lexImportWeak(l *lexer) stateFn {
+	if strings.HasPrefix(l.input[l.pos:], "weak") {
+		l.pos += Pos(len("weak"))
+		l.emit(itemImportWeak)
+		l.trim()
+	}
+	return lexImportPublic
+}
+
+func lexImportPublic(l *lexer) stateFn {
+	if strings.HasPrefix(l.input[l.pos:], "public") {
+		l.pos += Pos(len("public"))
+		l.emit(itemImportPublic)
+		l.trim()
+	}
+	return lexImportPath
+}
+
+func lexImportPath(l *lexer) stateFn {
+	// Should be a string literal
+	if strings.HasPrefix(l.input[l.pos:], "\"other.proto\"") {
+		l.pos += Pos(len("\"other.proto\""))
+		l.emit(itemStrLit)
+		l.trim()
+	}
+	if r := l.next(); r != ';' {
+		return l.errorf("proto file must start with 'syntax = \"proto3\";")
+	}
+	l.emit(itemSemiColon)
+	l.trim()
+	return lexTopLevel
 }
 
 func lexEnd(l *lexer) stateFn {
