@@ -4,13 +4,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kyleconroy/pb/ast"
 	"github.com/kyleconroy/pb/token"
 )
 
 const protoSimple = `syntax = "proto3";
 
 import public "other.proto";
+
 option java_package = "com.example.foo";
+
 enum EnumAllowingAlias {
   option allow_alias = true;
   UNKNOWN = 0;
@@ -18,11 +21,20 @@ enum EnumAllowingAlias {
   RUNNING = 2 [(custom_option) = "hello world"];
 }
 
+message message {
+}
+
 message outer {
   option (my_option).a = true;
   message inner {   // Level 2
     int64 ival = 1;
   } 
+  enum OtherEnum {
+    option allow_alias = true;
+    UNKNOWN = 0;
+    STARTED = 1;
+    RUNNING = 2 [(custom_option) = "hello world"];
+  }
   repeated inner inner_message = 2;
   EnumAllowingAlias enum_field =3;
   map<int32, string> my_map = 4;
@@ -36,9 +48,13 @@ service Limits {
 
 func TestLexer(t *testing.T) {
 	fset := token.NewFileSet()
-	_, err := ParseFile(fset, "", strings.NewReader(protoSimple), 0)
+	f, err := ParseFile(fset, "", strings.NewReader(protoSimple), 0)
 	if err != nil {
 		t.Error(err)
+	}
+
+	if f.Syntax != ast.Proto3 {
+		t.Error("The syntax should be proto3")
 	}
 }
 
