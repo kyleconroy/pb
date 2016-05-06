@@ -1,30 +1,51 @@
 package parser
 
-import "testing"
+import (
+	"strings"
+	"testing"
+
+	"github.com/kyleconroy/pb/token"
+)
 
 const protoSimple = `syntax = "proto3";
 
 import public "other.proto";
 option java_package = "com.example.foo";
-package foo.bar;
+enum EnumAllowingAlias {
+  option allow_alias = true;
+  UNKNOWN = 0;
+  STARTED = 1;
+  RUNNING = 2 [(custom_option) = "hello world"];
+}
 
-message SearchRequest {
-  string query = 1; // Hello there main
-  int32 page_number = 2;
-  int32 result_per_page = 3;
+message outer {
+  option (my_option).a = true;
+  message inner {   // Level 2
+    int64 ival = 1;
+  } 
+  repeated inner inner_message = 2;
+  EnumAllowingAlias enum_field =3;
+  map<int32, string> my_map = 4;
+}
+
+service Limits {
+  rpc Get(LimitsGetReq) returns (AccountLimits) {}
+  rpc Set(LimitsSetReq) returns (Empty) {}
 }
 `
 
 func TestLexer(t *testing.T) {
-	_, items := lex("protoSimple", protoSimple)
-	for i := range items {
-		t.Logf("%s", i)
+	fset := token.NewFileSet()
+	_, err := ParseFile(fset, "", strings.NewReader(protoSimple), 0)
+	if err != nil {
+		t.Error(err)
 	}
 }
 
 func TestError(t *testing.T) {
-	_, items := lex("protoError", "foo")
-	for i := range items {
-		t.Logf("%s", i)
+	fset := token.NewFileSet()
+	_, err := ParseFile(fset, "", strings.NewReader("foo"), 0)
+	if err == nil {
+		t.Error(err)
 	}
 }

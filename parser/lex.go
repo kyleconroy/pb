@@ -44,15 +44,21 @@ const (
 	itemError itemType = iota // error occurred; value is text of error
 	itemEOF                   // end
 
-	itemDot        // .
-	itemEq         // =
-	itemSemiColon  // ;
-	itemLeftBrace  // {
-	itemRightBrace // }
-	itemIdent      // letter { letter | unicodeDigit | "_" }
-	itemFullIdent  // ident { "." ident }
-	itemStrLit     // ( "'" { charValue } "'" ) |  ( '"' { charValue } '"' )
-	itemComment    // // comment
+	itemDot          // .
+	itemEq           // =
+	itemSemiColon    // ;
+	itemLeftBrace    // {
+	itemRightBrace   // }
+	itemLeftParen    // (
+	itemRightParen   // )
+	itemLeftBracket  // [
+	itemRightBracket // ]
+	itemLeftMap      // <
+	itemRightMap     // >
+	itemIdent        // letter { letter | unicodeDigit | "_" }
+	itemFullIdent    // ident { "." ident }
+	itemStrLit       // ( "'" { charValue } "'" ) |  ( '"' { charValue } '"' )
+	itemComment      // // comment
 
 	// keywords
 	itemKeyword
@@ -64,6 +70,11 @@ const (
 	itemImportPublic // public
 	itemPackage      // package
 	itemOption       // option
+	itemMap          // map
+	itemRepeated     // repreated
+	itemReturns      // returns
+	itemRPC          // rpc
+	itemService      // service
 )
 
 // stateFn represents the state of the scanner as a function that returns the next state.
@@ -77,27 +88,30 @@ const (
 
 // lexer holds the state of the scanner.
 type lexer struct {
-	name       string    // the name of the input; used only for error reports
-	input      string    // the string being scanned
-	leftDelim  string    // start of action
-	rightDelim string    // end of action
-	state      stateFn   // the next lexing function to enter
-	pos        Pos       // current position in the input
-	start      Pos       // start position of this item
-	width      Pos       // width of last rune read from input
-	lastPos    Pos       // position of most recent item returned by nextItem
-	items      chan item // channel of scanned items
-	parenDepth int       // nesting depth of ( ) exprs
+	name         string    // the name of the input; used only for error reports
+	input        string    // the string being scanned
+	leftDelim    string    // start of action
+	rightDelim   string    // end of action
+	state        stateFn   // the next lexing function to enter
+	pos          Pos       // current position in the input
+	start        Pos       // start position of this item
+	width        Pos       // width of last rune read from input
+	lastPos      Pos       // position of most recent item returned by nextItem
+	items        chan item // channel of scanned items
+	braceDepth   int       // nesting depth of { }
+	bracketDepth int       // nesting depth of [ ]
+	parenDepth   int       // nesting depth of ( )
+	mapDepth     int       // nesting depth of < >
 }
 
-func lex(name, input string) (*lexer, chan item) {
+func lex(name, input string) *lexer {
 	l := &lexer{
 		name:  name,
 		input: input,
 		items: make(chan item),
 	}
 	go l.run() // Concurrently run state machine.
-	return l, l.items
+	return l
 }
 
 // run lexes the input by executing state functions until
@@ -107,6 +121,21 @@ func (l *lexer) run() {
 		state = state(l)
 	}
 	close(l.items) // No more tokens will be delivered.
+}
+
+// nextItem returns the next item from the input.
+// Called by the parser, not in the lexing goroutine.
+func (l *lexer) nextItem() item {
+	item := <-l.items
+	l.lastPos = item.pos
+	return item
+}
+
+// drain drains the output so the lexing goroutine will exit.
+// Called by the parser, not in the lexing goroutine.
+func (l *lexer) drain() {
+	for _ = range l.items {
+	}
 }
 
 // emit passes an item back to the client.
@@ -163,9 +192,39 @@ func lexSchema(l *lexer) stateFn {
 	// Ignore whitespace, it doesn't matter
 	l.trim()
 	switch r := l.next(); {
+	case r == '.':
+		l.emit(itemDot)
+	case r == '<':
+		l.emit(itemLeftMap)
+		l.mapDepth++
+	case r == '>':
+		l.emit(itemRightMap)
+		l.mapDepth--
+	case r == '[':
+		l.emit(itemLeftBracket)
+		l.bracketDepth++
+	case r == ']':
+		l.emit(itemRightBracket)
+		l.bracketDepth--
+	case r == '(':
+		l.emit(itemLeftParen)
+		l.parenDepth++
+	case r == ')':
+		l.emit(itemRightParen)
+		l.parenDepth--
 	case r == '{':
 		l.emit(itemLeftBrace)
+		l.braceDepth++
 	case r == '}':
+		l.emit(itemRightBrace)
+		l.braceDepth--
+		if l.braceDepth < 0 {
+			return l.errorf("unexpected right brace %#U", r)
+		}
+	case r == ',':
+		if l.mapDepth <= 0 {
+			return l.errorf("unexpected comman outside of map definition %#U", r)
+		}
 		l.emit(itemRightBrace)
 	case r == '=':
 		l.emit(itemEq)
@@ -187,13 +246,18 @@ func lexSchema(l *lexer) stateFn {
 }
 
 var key = map[string]itemType{
-	"syntax":  itemSyntax,
-	"import":  itemImport,
-	"weak":    itemImportWeak,
-	"public":  itemImportPublic,
-	"message": itemMessage,
-	"enum":    itemEnum,
-	"option":  itemOption,
+	"syntax":   itemSyntax,
+	"import":   itemImport,
+	"weak":     itemImportWeak,
+	"public":   itemImportPublic,
+	"message":  itemMessage,
+	"enum":     itemEnum,
+	"option":   itemOption,
+	"map":      itemMap,
+	"rpc":      itemRPC,
+	"returns":  itemReturns,
+	"service":  itemService,
+	"repeated": itemRepeated,
 }
 
 func lexComment(l *lexer) stateFn {
@@ -219,9 +283,6 @@ func lexIdent(l *lexer) stateFn {
 			l.backup()
 			word := l.input[l.start:l.pos]
 			switch {
-			case word == "package":
-				l.trim()
-				return lexFullIdent
 			case key[word] != itemError:
 				l.emit(key[word])
 				return lexSchema
@@ -229,20 +290,6 @@ func lexIdent(l *lexer) stateFn {
 				l.emit(itemIdent)
 				return lexSchema
 			}
-		}
-	}
-}
-
-// lexIdentifier scans an alphanumeric.
-func lexFullIdent(l *lexer) stateFn {
-	for {
-		switch r := l.next(); {
-		case isAlphaNumeric(r) || r == '.': // wrong
-			// absorb.
-		default:
-			l.backup()
-			l.emit(itemFullIdent)
-			return lexSchema
 		}
 	}
 }
