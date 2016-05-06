@@ -188,6 +188,41 @@ func (l *lexer) trim() {
 	l.start = l.pos
 }
 
+func lexTopLevel(l *lexer) stateFn {
+	// Doesn't work with comments
+	for {
+		switch r := l.next(); {
+		case unicode.IsLetter(r):
+			// absorb.
+		default:
+			l.backup()
+			keyword := l.input[l.start:l.pos]
+			switch {
+			case keyword == "syntax":
+				l.emit(itemSyntax)
+				return lexSchema
+			case keyword == "service":
+				l.emit(itemService)
+				return lexSchema
+			case keyword == "option":
+				l.emit(itemOption)
+				return lexSchema
+			case keyword == "enum":
+				l.emit(itemEnum)
+				return lexSchema
+			case keyword == "package":
+				l.emit(itemPackage)
+				return lexSchema
+			case keyword == "message":
+				l.emit(itemMessage)
+				return lexSchema
+			default:
+				return l.errorf("unexpected keyword: %s", keyword)
+			}
+		}
+	}
+}
+
 func lexSchema(l *lexer) stateFn {
 	// Ignore whitespace, it doesn't matter
 	l.trim()
