@@ -6,17 +6,16 @@ import (
 	"io/ioutil"
 
 	"github.com/kyleconroy/pb/ast"
-	"github.com/kyleconroy/pb/token"
 )
 
 type Mode int
 
-func ParseFile(fset *token.FileSet, filename string, src io.Reader, mode Mode) (*ast.File, error) {
+func ParseFile(src io.Reader, mode Mode) (*ast.File, error) {
 	payload, err := ioutil.ReadAll(src)
 	if err != nil {
 		return nil, err
 	}
-	t := tree{lex(filename, string(payload)), &ast.File{}}
+	t := tree{lex("", string(payload)), &ast.File{}}
 	return t.parse()
 }
 

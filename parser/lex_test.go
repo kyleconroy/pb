@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/kyleconroy/pb/ast"
-	"github.com/kyleconroy/pb/token"
 )
 
 const protoSimple = `syntax = "proto3";
@@ -47,8 +46,7 @@ service Limits {
 `
 
 func TestLexer(t *testing.T) {
-	fset := token.NewFileSet()
-	f, err := ParseFile(fset, "", strings.NewReader(protoSimple), 0)
+	f, err := ParseFile(strings.NewReader(protoSimple), 0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -59,8 +57,7 @@ func TestLexer(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	fset := token.NewFileSet()
-	_, err := ParseFile(fset, "", strings.NewReader("foo"), 0)
+	_, err := ParseFile(strings.NewReader("foo"), 0)
 	if err == nil {
 		t.Error(err)
 	}
