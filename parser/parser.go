@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -15,7 +16,7 @@ func ParseFile(src io.Reader, mode Mode) (*ast.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	t := tree{lex("", string(payload)), &ast.File{}}
+	t := tree{lex("", string(payload)), &ast.File{Nodes: []ast.Node{}}}
 	return t.parse()
 }
 
@@ -31,12 +32,36 @@ func (t *tree) parse() (*ast.File, error) {
 		return t.f, err
 	}
 
-	//for {
-	//	token := t.nextNonComment()
-	//	if token.typ == itemError {
-	//		return t.f, errors.New(token.val)
-	//	}
-	//}
+	for {
+		switch token := t.nextNonComment(); {
+		case token.typ == itemImport:
+			if err := t.parseImport(); err != nil {
+				return t.f, err
+			}
+		case token.typ == itemOption:
+			if err := t.parseOption(); err != nil {
+				return t.f, err
+			}
+		case token.typ == itemMessage:
+			if err := t.parseMessage(); err != nil {
+				return t.f, err
+			}
+		case token.typ == itemService:
+			if err := t.parseService(); err != nil {
+				return t.f, err
+			}
+		case token.typ == itemEnum:
+			if err := t.parseEnum(); err != nil {
+				return t.f, err
+			}
+		case token.typ == itemError:
+			return t.f, errors.New(token.val)
+		case token.typ == itemEOF:
+			break
+		default:
+			return t.f, fmt.Errorf("Incorrect token: %s", token)
+		}
+	}
 
 	return t.f, nil
 }
@@ -54,6 +79,176 @@ func (t *tree) parseSyntax() error {
 		}
 	}
 	t.f.Syntax = ast.Proto3
+	return nil
+}
+
+func (t *tree) parseImport() error {
+	idents := []ast.Ident{}
+	seen := map[itemType]struct{}{}
+	for {
+		switch tok := t.nextNonComment(); {
+		case tok.typ == itemImportPublic || tok.typ == itemImportWeak:
+			if _, ok := seen[tok.typ]; ok {
+				return fmt.Errorf("Multiple %s modifiers found", tok.val)
+			}
+			seen[tok.typ] = struct{}{}
+			idents = append(idents, ast.Ident{Name: tok.val})
+		case tok.typ == itemStrLit:
+			if end := t.nextNonComment(); end.typ != itemSemiColon {
+				return fmt.Errorf("Incorrect token: %s", end)
+			}
+			t.f.Nodes = append(t.f.Nodes, &ast.Import{
+				Modifiers: idents,
+				Path:      ast.BasicLit{Value: tok.val},
+			})
+			return nil
+		default:
+			return fmt.Errorf("Incorrect token: %s", tok)
+		}
+	}
+	return nil
+}
+
+func (t *tree) parseOption() error {
+	var ident item
+
+	tok := t.nextNonComment()
+	// TODO We need to handle full idents
+	if tok.typ != itemIdent {
+		return fmt.Errorf("expected ident, found %s", tok)
+	}
+	ident = tok
+
+	tok = t.nextNonComment()
+	// TODO We need to handle full idents
+	if tok.typ != itemEq {
+		return fmt.Errorf("expected =, found %s", tok)
+	}
+
+	tok = t.nextNonComment()
+	// TODO We need to handle all constant types
+	if tok.typ != itemStrLit {
+		return fmt.Errorf("expected string literal, found %s", tok)
+	}
+
+	if end := t.nextNonComment(); end.typ != itemSemiColon {
+		return fmt.Errorf("Incorrect token: %s", end)
+	}
+
+	t.f.Nodes = append(t.f.Nodes, &ast.Option{
+		Names: []ast.Ident{
+			{Name: ident.val},
+		},
+		Constant: ast.BasicLit{Value: tok.val},
+	})
+	return nil
+}
+
+func (t *tree) parseMessage() error {
+	tok := t.nextNonComment()
+	if tok.typ != itemIdent {
+		return fmt.Errorf("expected ident, found %s", tok)
+	}
+	msg := ast.Message{
+		Name: ast.Ident{Name: tok.val},
+	}
+
+	tok = t.nextNonComment()
+	if tok.typ != itemLeftBrace {
+		return fmt.Errorf("expected {, found %s", tok)
+	}
+	depth := 1
+
+	for {
+		switch t.nextNonComment().typ {
+		case itemLeftBrace:
+			depth++
+		case itemRightBrace:
+			depth--
+			if depth == 0 {
+				t.f.Nodes = append(t.f.Nodes, &msg)
+				return nil
+			}
+		case itemEOF:
+			return fmt.Errorf("error")
+		case itemError:
+			return fmt.Errorf("error")
+		default:
+		}
+	}
+
+	return nil
+}
+
+func (t *tree) parseEnum() error {
+	tok := t.nextNonComment()
+	if tok.typ != itemIdent {
+		return fmt.Errorf("expected ident, found %s", tok)
+	}
+	msg := ast.Enum{
+		Name: ast.Ident{Name: tok.val},
+	}
+
+	tok = t.nextNonComment()
+	if tok.typ != itemLeftBrace {
+		return fmt.Errorf("expected {, found %s", tok)
+	}
+	depth := 1
+
+	for {
+		switch t.nextNonComment().typ {
+		case itemLeftBrace:
+			depth++
+		case itemRightBrace:
+			depth--
+			if depth == 0 {
+				t.f.Nodes = append(t.f.Nodes, &msg)
+				return nil
+			}
+		case itemEOF:
+			return fmt.Errorf("error")
+		case itemError:
+			return fmt.Errorf("error")
+		default:
+		}
+	}
+
+	return nil
+}
+
+func (t *tree) parseService() error {
+	tok := t.nextNonComment()
+	if tok.typ != itemIdent {
+		return fmt.Errorf("expected ident, found %s", tok)
+	}
+	msg := ast.Service{
+		Name: ast.Ident{Name: tok.val},
+	}
+
+	tok = t.nextNonComment()
+	if tok.typ != itemLeftBrace {
+		return fmt.Errorf("expected {, found %s", tok)
+	}
+	depth := 1
+
+	for {
+		switch t.nextNonComment().typ {
+		case itemLeftBrace:
+			depth++
+		case itemRightBrace:
+			depth--
+			if depth == 0 {
+				t.f.Nodes = append(t.f.Nodes, &msg)
+				return nil
+			}
+		case itemEOF:
+			return fmt.Errorf("error")
+		case itemError:
+			return fmt.Errorf("error")
+		default:
+		}
+	}
+
 	return nil
 }
 

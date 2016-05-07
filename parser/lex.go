@@ -45,6 +45,7 @@ const (
 	itemEOF                   // end
 
 	itemDot          // .
+	itemComma        // ,
 	itemEq           // =
 	itemSemiColon    // ;
 	itemLeftBrace    // {
@@ -225,7 +226,7 @@ func lexSchema(l *lexer) stateFn {
 		if l.mapDepth <= 0 {
 			return l.errorf("unexpected comman outside of map definition %#U", r)
 		}
-		l.emit(itemRightBrace)
+		l.emit(itemComma)
 	case r == '=':
 		l.emit(itemEq)
 	case r == '"':
@@ -286,7 +287,10 @@ func lexIdentOrKeyword(l *lexer) stateFn {
 			case i == itemEnum || i == itemMessage || i == itemService || i == itemRPC:
 				l.emit(i)
 				return lexIdent
-			case i == itemReturns || i == itemOption || i == itemRepeated || i == itemImport || i == itemSyntax || i == itemMap:
+			case i == itemReturns || i == itemOption || i == itemRepeated || i == itemImport || i == itemSyntax:
+				l.emit(i)
+				return lexSchema
+			case i == itemMap || i == itemImportPublic || i == itemImportWeak:
 				l.emit(i)
 				return lexSchema
 			default:

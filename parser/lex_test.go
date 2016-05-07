@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	goast "go/ast"
+
 	"github.com/kyleconroy/pb/ast"
 )
 
@@ -13,14 +15,14 @@ import public "other.proto";
 
 option java_package = "com.example.foo";
 
+message message {
+}
+
 enum EnumAllowingAlias {
   option allow_alias = true;
   UNKNOWN = 0;
   STARTED = 1;
   RUNNING = 2 [(custom_option) = "hello world"];
-}
-
-message message {
 }
 
 message outer {
@@ -50,6 +52,8 @@ func TestLexer(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	goast.Print(nil, f)
 
 	if f.Syntax != ast.Proto3 {
 		t.Error("The syntax should be proto3")
