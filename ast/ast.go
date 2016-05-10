@@ -62,7 +62,7 @@ func (o *Option) End() token.Pos {
 
 type Message struct {
 	Name Ident
-	Body int
+	Body []Node
 }
 
 func (m *Message) Pos() token.Pos {

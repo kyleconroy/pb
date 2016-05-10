@@ -61,17 +61,21 @@ func (t *tree) parse() (*ast.File, error) {
 				return t.f, err
 			}
 		case token.typ == itemMessage:
-			if err := t.parseMessage(); err != nil {
+			node, err := t.parseMessage()
+			if err != nil {
 				return t.f, err
 			}
+			t.f.Nodes = append(t.f.Nodes, node)
 		case token.typ == itemService:
 			if err := t.parseService(); err != nil {
 				return t.f, err
 			}
 		case token.typ == itemEnum:
-			if err := t.parseEnum(); err != nil {
+			node, err := t.parseEnum()
+			if err != nil {
 				return t.f, err
 			}
+			t.f.Nodes = append(t.f.Nodes, node)
 		case token.typ == itemError:
 			return t.f, errors.New(token.val)
 		case token.typ == itemEOF:
@@ -175,10 +179,10 @@ func (t *tree) parseOption() error {
 	return nil
 }
 
-func (t *tree) parseMessage() error {
+func (t *tree) parseMessage() (ast.Node, error) {
 	name := t.nextNonComment()
 	if name.typ != itemIdent {
-		return fmt.Errorf("expected ident, found %s", name)
+		return nil, fmt.Errorf("expected ident, found %s", name)
 	}
 	msg := ast.Message{
 		Name: ast.Ident{Name: name.val},
@@ -187,46 +191,56 @@ func (t *tree) parseMessage() error {
 
 	lBrace := t.nextNonComment()
 	if lBrace.typ != itemLeftBrace {
-		return fmt.Errorf("expected {, found %s", lBrace)
+		return nil, fmt.Errorf("expected {, found %s", lBrace)
 	}
 
 	for {
 		switch tok := t.nextNonComment(); {
 		case tok.typ == itemSemiColon:
 			msg.Body = append(msg.Body, &ast.EmptyStmt{Semicolon: token.Pos(0)})
+		case tok.typ == itemMessage:
+			nmsg, err := t.parseMessage()
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, nmsg)
+		case tok.typ == itemEnum:
+			nenum, err := t.parseEnum()
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, nenum)
 		case tok.typ == itemOption:
 			// Should be constant here, not bool
 			toks, err := t.expect(itemIdent, itemEq, itemBoolLit, itemSemiColon)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			msg.Body = append(msg.Body, &ast.Option{
 				Names:    []ast.Ident{{Name: toks[0].val}},
 				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
 			})
 		case tok.typ == itemIdent:
-			toks, err := t.expect(itemEq, itemIntLit, itemSemiColon)
+			toks, err := t.expect(itemIdent, itemEq, itemIntLit, itemSemiColon)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			msg.Body = append(msg.Body, &ast.EnumField{
+			msg.Body = append(msg.Body, &ast.MessageField{
 				Name:  ast.Ident{Name: tok.val},
-				Value: toks[1].val,
+				Value: toks[2].val,
 			})
 		case tok.typ == itemRightBrace:
-			t.f.Nodes = append(t.f.Nodes, &msg)
-			return nil
+			return &msg, nil
 		default:
-			return fmt.Errorf("unexpected token in message: %s", tok)
+			return nil, fmt.Errorf("unexpected token in message: %s", tok)
 		}
 	}
-	return nil
 }
 
-func (t *tree) parseEnum() error {
+func (t *tree) parseEnum() (ast.Node, error) {
 	name := t.nextNonComment()
 	if name.typ != itemIdent {
-		return fmt.Errorf("expected ident, found %s", name)
+		return nil, fmt.Errorf("expected ident, found %s", name)
 	}
 	msg := ast.Enum{
 		Name: ast.Ident{Name: name.val},
@@ -235,7 +249,7 @@ func (t *tree) parseEnum() error {
 
 	lBrace := t.nextNonComment()
 	if lBrace.typ != itemLeftBrace {
-		return fmt.Errorf("expected {, found %s", lBrace)
+		return nil, fmt.Errorf("expected {, found %s", lBrace)
 	}
 
 	for {
@@ -246,7 +260,7 @@ func (t *tree) parseEnum() error {
 			// Should be constant here, not bool
 			toks, err := t.expect(itemIdent, itemEq, itemBoolLit, itemSemiColon)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			msg.Body = append(msg.Body, &ast.Option{
 				Names:    []ast.Ident{{Name: toks[0].val}},
@@ -255,20 +269,18 @@ func (t *tree) parseEnum() error {
 		case tok.typ == itemIdent:
 			toks, err := t.expect(itemEq, itemIntLit, itemSemiColon)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			msg.Body = append(msg.Body, &ast.EnumField{
 				Name:  ast.Ident{Name: tok.val},
 				Value: toks[1].val,
 			})
 		case tok.typ == itemRightBrace:
-			t.f.Nodes = append(t.f.Nodes, &msg)
-			return nil
+			return &msg, nil
 		default:
-			return fmt.Errorf("unexpected token in enum: %s", tok)
+			return nil, fmt.Errorf("unexpected token in enum: %s", tok)
 		}
 	}
-	return nil
 }
 
 func (t *tree) parseService() error {

@@ -29,7 +29,7 @@ enum EnumAllowingAlias {
 }
 
 message outer {
-  option (my_option).a = true;
+  //option (my_option).a = true;
   message inner {   // Level 2
     int64 ival = 1;
   } 
@@ -37,11 +37,10 @@ message outer {
     option allow_alias = true;
     UNKNOWN = 0;
     STARTED = 1;
-    RUNNING = 2 [(custom_option) = "hello world"];
   }
-  repeated inner inner_message = 2;
+  //repeated inner inner_message = 2;
   EnumAllowingAlias enum_field =3;
-  map<int32, string> my_map = 4;
+  //map<int32, string> my_map = 4;
 }
 
 service Limits {
