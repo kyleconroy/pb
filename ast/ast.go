@@ -1,6 +1,8 @@
 package ast
 
 import (
+	"go/ast"
+
 	"github.com/kyleconroy/pb/token"
 )
 
@@ -75,7 +77,7 @@ func (m *Message) End() token.Pos {
 
 type Enum struct {
 	Name Ident
-	Body int
+	Body []ast.Node
 }
 
 func (e *Enum) Pos() token.Pos {
@@ -88,7 +90,7 @@ func (e *Enum) End() token.Pos {
 
 type Service struct {
 	Name Ident
-	Body int
+	Body []ast.Node
 }
 
 func (s *Service) Pos() token.Pos {

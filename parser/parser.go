@@ -203,38 +203,34 @@ func (t *tree) parseMessage() error {
 }
 
 func (t *tree) parseEnum() error {
-	tok := t.nextNonComment()
-	if tok.typ != itemIdent {
-		return fmt.Errorf("expected ident, found %s", tok)
+	name := t.nextNonComment()
+	if name.typ != itemIdent {
+		return fmt.Errorf("expected ident, found %s", name)
 	}
 	msg := ast.Enum{
-		Name: ast.Ident{Name: tok.val},
+		Name: ast.Ident{Name: name.val},
 	}
 
-	tok = t.nextNonComment()
-	if tok.typ != itemLeftBrace {
-		return fmt.Errorf("expected {, found %s", tok)
+	lBrace := t.nextNonComment()
+	if lBrace.typ != itemLeftBrace {
+		return fmt.Errorf("expected {, found %s", lBrace)
 	}
-	depth := 1
 
 	for {
-		switch t.nextNonComment().typ {
-		case itemLeftBrace:
-			depth++
-		case itemRightBrace:
-			depth--
-			if depth == 0 {
-				t.f.Nodes = append(t.f.Nodes, &msg)
-				return nil
-			}
-		case itemEOF:
-			return fmt.Errorf("error")
-		case itemError:
-			return fmt.Errorf("error")
+		switch tok := t.nextNonComment(); {
+		case tok.typ == itemSemiColon:
+			// Empty statement
+		case tok.typ == itemOption:
+			// Option
+		case tok.typ == itemIdent:
+			// enum name
+		case tok.typ == itemRightBrace:
+			t.f.Nodes = append(t.f.Nodes, &msg)
+			return nil
 		default:
+			return fmt.Errorf("error")
 		}
 	}
-
 	return nil
 }
 
