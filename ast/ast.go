@@ -98,3 +98,14 @@ func (s *Service) Pos() token.Pos {
 func (s *Service) End() token.Pos {
 	return token.Pos(0)
 }
+
+type Package struct {
+}
+
+func (p *Package) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (p *Package) End() token.Pos {
+	return token.Pos(0)
+}

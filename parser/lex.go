@@ -59,7 +59,8 @@ const (
 	itemIdent        // letter { letter | unicodeDigit | "_" }
 	itemFullIdent    // ident { "." ident }
 	itemStrLit       // ( "'" { charValue } "'" ) |  ( '"' { charValue } '"' )
-	itemComment      // // comment
+	itemBoolLit      // true | false
+	itemComment      // comment
 
 	// keywords
 	itemKeyword
@@ -259,6 +260,7 @@ var key = map[string]itemType{
 	"returns":  itemReturns,
 	"service":  itemService,
 	"repeated": itemRepeated,
+	"package":  itemPackage,
 }
 
 func lexComment(l *lexer) stateFn {
@@ -283,15 +285,19 @@ func lexIdentOrKeyword(l *lexer) stateFn {
 			// absorb.
 		default:
 			l.backup()
-			switch i := key[l.input[l.start:l.pos]]; {
+			word := l.input[l.start:l.pos]
+			switch i := key[word]; {
 			case i == itemEnum || i == itemMessage || i == itemService || i == itemRPC:
 				l.emit(i)
 				return lexIdent
 			case i == itemReturns || i == itemOption || i == itemRepeated || i == itemImport || i == itemSyntax:
 				l.emit(i)
 				return lexSchema
-			case i == itemMap || i == itemImportPublic || i == itemImportWeak:
+			case i == itemMap || i == itemImportPublic || i == itemImportWeak || i == itemPackage:
 				l.emit(i)
+				return lexSchema
+			case word == "true" || word == "false":
+				l.emit(itemBoolLit)
 				return lexSchema
 			default:
 				l.emit(itemIdent)

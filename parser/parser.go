@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 
 	"github.com/kyleconroy/pb/ast"
+	"github.com/kyleconroy/pb/token"
 )
 
 type Mode int
@@ -38,6 +39,10 @@ func (t *tree) parse() (*ast.File, error) {
 			if err := t.parseImport(); err != nil {
 				return t.f, err
 			}
+		case token.typ == itemPackage:
+			if err := t.parsePackage(); err != nil {
+				return t.f, err
+			}
 		case token.typ == itemOption:
 			if err := t.parseOption(); err != nil {
 				return t.f, err
@@ -57,7 +62,7 @@ func (t *tree) parse() (*ast.File, error) {
 		case token.typ == itemError:
 			return t.f, errors.New(token.val)
 		case token.typ == itemEOF:
-			break
+			return t.f, nil
 		default:
 			return t.f, fmt.Errorf("Incorrect token: %s", token)
 		}
@@ -82,6 +87,17 @@ func (t *tree) parseSyntax() error {
 	return nil
 }
 
+func (t *tree) parsePackage() error {
+	for {
+		item := t.nextNonComment()
+		if item.typ == itemSemiColon {
+			break
+		}
+	}
+	t.f.Nodes = append(t.f.Nodes, &ast.Package{})
+	return nil
+}
+
 func (t *tree) parseImport() error {
 	idents := []ast.Ident{}
 	seen := map[itemType]struct{}{}
@@ -99,7 +115,7 @@ func (t *tree) parseImport() error {
 			}
 			t.f.Nodes = append(t.f.Nodes, &ast.Import{
 				Modifiers: idents,
-				Path:      ast.BasicLit{Value: tok.val},
+				Path:      ast.BasicLit{Value: tok.val, Kind: token.STRING},
 			})
 			return nil
 		default:
@@ -126,8 +142,14 @@ func (t *tree) parseOption() error {
 	}
 
 	tok = t.nextNonComment()
+	var con ast.BasicLit
 	// TODO We need to handle all constant types
-	if tok.typ != itemStrLit {
+	switch tok.typ {
+	case itemStrLit:
+		con = ast.BasicLit{Value: tok.val, Kind: token.STRING}
+	case itemBoolLit:
+		con = ast.BasicLit{Value: tok.val, Kind: token.BOOL}
+	default:
 		return fmt.Errorf("expected string literal, found %s", tok)
 	}
 
@@ -139,7 +161,7 @@ func (t *tree) parseOption() error {
 		Names: []ast.Ident{
 			{Name: ident.val},
 		},
-		Constant: ast.BasicLit{Value: tok.val},
+		Constant: con,
 	})
 	return nil
 }
