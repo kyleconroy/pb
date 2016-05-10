@@ -176,38 +176,50 @@ func (t *tree) parseOption() error {
 }
 
 func (t *tree) parseMessage() error {
-	tok := t.nextNonComment()
-	if tok.typ != itemIdent {
-		return fmt.Errorf("expected ident, found %s", tok)
+	name := t.nextNonComment()
+	if name.typ != itemIdent {
+		return fmt.Errorf("expected ident, found %s", name)
 	}
 	msg := ast.Message{
-		Name: ast.Ident{Name: tok.val},
+		Name: ast.Ident{Name: name.val},
+		Body: []ast.Node{},
 	}
 
-	tok = t.nextNonComment()
-	if tok.typ != itemLeftBrace {
-		return fmt.Errorf("expected {, found %s", tok)
+	lBrace := t.nextNonComment()
+	if lBrace.typ != itemLeftBrace {
+		return fmt.Errorf("expected {, found %s", lBrace)
 	}
-	depth := 1
 
 	for {
-		switch t.nextNonComment().typ {
-		case itemLeftBrace:
-			depth++
-		case itemRightBrace:
-			depth--
-			if depth == 0 {
-				t.f.Nodes = append(t.f.Nodes, &msg)
-				return nil
+		switch tok := t.nextNonComment(); {
+		case tok.typ == itemSemiColon:
+			msg.Body = append(msg.Body, &ast.EmptyStmt{Semicolon: token.Pos(0)})
+		case tok.typ == itemOption:
+			// Should be constant here, not bool
+			toks, err := t.expect(itemIdent, itemEq, itemBoolLit, itemSemiColon)
+			if err != nil {
+				return err
 			}
-		case itemEOF:
-			return fmt.Errorf("error")
-		case itemError:
-			return fmt.Errorf("error")
+			msg.Body = append(msg.Body, &ast.Option{
+				Names:    []ast.Ident{{Name: toks[0].val}},
+				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
+			})
+		case tok.typ == itemIdent:
+			toks, err := t.expect(itemEq, itemIntLit, itemSemiColon)
+			if err != nil {
+				return err
+			}
+			msg.Body = append(msg.Body, &ast.EnumField{
+				Name:  ast.Ident{Name: tok.val},
+				Value: toks[1].val,
+			})
+		case tok.typ == itemRightBrace:
+			t.f.Nodes = append(t.f.Nodes, &msg)
+			return nil
 		default:
+			return fmt.Errorf("unexpected token in message: %s", tok)
 		}
 	}
-
 	return nil
 }
 
