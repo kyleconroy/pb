@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 	"unicode"
 	"unicode/utf8"
 )
@@ -59,6 +60,7 @@ const (
 	itemIdent        // letter { letter | unicodeDigit | "_" }
 	itemFullIdent    // ident { "." ident }
 	itemStrLit       // ( "'" { charValue } "'" ) |  ( '"' { charValue } '"' )
+	itemIntLit       // 0 ... 9
 	itemBoolLit      // true | false
 	itemComment      // comment
 
@@ -300,7 +302,12 @@ func lexIdentOrKeyword(l *lexer) stateFn {
 				l.emit(itemBoolLit)
 				return lexSchema
 			default:
-				l.emit(itemIdent)
+				// TODO: This is pretty crappy
+				if _, err := strconv.Atoi(word); err == nil {
+					l.emit(itemIntLit)
+				} else {
+					l.emit(itemIdent)
+				}
 				return lexSchema
 			}
 		}

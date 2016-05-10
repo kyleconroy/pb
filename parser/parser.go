@@ -26,6 +26,19 @@ type tree struct {
 	f *ast.File
 }
 
+func (t *tree) expect(typs ...itemType) ([]item, error) {
+	items := make([]item, len(typs))
+	for i, typ := range typs {
+		tok := t.nextNonComment()
+		if tok.typ == typ {
+			items[i] = tok
+		} else {
+			return items, fmt.Errorf("Incorrect token: %s", tok)
+		}
+	}
+	return items, nil
+}
+
 func (t *tree) parse() (*ast.File, error) {
 	defer t.l.drain()
 
@@ -72,16 +85,12 @@ func (t *tree) parse() (*ast.File, error) {
 }
 
 func (t *tree) parseSyntax() error {
-	for _, f := range []func(item) bool{
-		func(i item) bool { return i.typ == itemSyntax },
-		func(i item) bool { return i.typ == itemEq },
-		func(i item) bool { return i.typ == itemStrLit && i.val == "\"proto3\"" },
-		func(i item) bool { return i.typ == itemSemiColon },
-	} {
-		item := t.nextNonComment()
-		if !f(item) {
-			return errors.New("proto files must start with `syntax =\"proto3\";`")
-		}
+	toks, err := t.expect(itemSyntax, itemEq, itemStrLit, itemSemiColon)
+	if err != nil {
+		return err
+	}
+	if toks[2].val != "\"proto3\"" {
+		return fmt.Errorf("Looking for proto3")
 	}
 	t.f.Syntax = ast.Proto3
 	return nil
@@ -209,6 +218,7 @@ func (t *tree) parseEnum() error {
 	}
 	msg := ast.Enum{
 		Name: ast.Ident{Name: name.val},
+		Body: []ast.Node{},
 	}
 
 	lBrace := t.nextNonComment()
@@ -219,16 +229,31 @@ func (t *tree) parseEnum() error {
 	for {
 		switch tok := t.nextNonComment(); {
 		case tok.typ == itemSemiColon:
-			// Empty statement
+			msg.Body = append(msg.Body, &ast.EmptyStmt{Semicolon: token.Pos(0)})
 		case tok.typ == itemOption:
-			// Option
+			// Should be constant here, not bool
+			toks, err := t.expect(itemIdent, itemEq, itemBoolLit, itemSemiColon)
+			if err != nil {
+				return err
+			}
+			msg.Body = append(msg.Body, &ast.Option{
+				Names:    []ast.Ident{{Name: toks[0].val}},
+				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
+			})
 		case tok.typ == itemIdent:
-			// enum name
+			toks, err := t.expect(itemEq, itemIntLit, itemSemiColon)
+			if err != nil {
+				return err
+			}
+			msg.Body = append(msg.Body, &ast.EnumField{
+				Name:  ast.Ident{Name: tok.val},
+				Value: toks[1].val,
+			})
 		case tok.typ == itemRightBrace:
 			t.f.Nodes = append(t.f.Nodes, &msg)
 			return nil
 		default:
-			return fmt.Errorf("error")
+			return fmt.Errorf("unexpected token in enum: %s", tok)
 		}
 	}
 	return nil

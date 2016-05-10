@@ -19,10 +19,13 @@ message message {
 }
 
 enum EnumAllowingAlias {
+  ;
+
+  ;
   option allow_alias = true;
   UNKNOWN = 0;
   STARTED = 1;
-  RUNNING = 2 [(custom_option) = "hello world"];
+  //RUNNING = 2 [(custom_option) = "hello world"];
 }
 
 message outer {
@@ -252,8 +255,8 @@ message Mixin {
 }
 `
 
-func TestLexer(t *testing.T) {
-	f, err := ParseFile(strings.NewReader(protoAPI), 0)
+func checkString(t *testing.T, in string) {
+	f, err := ParseFile(strings.NewReader(in), 0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -261,6 +264,14 @@ func TestLexer(t *testing.T) {
 	if f.Syntax != ast.Proto3 {
 		t.Error("The syntax should be proto3")
 	}
+}
+
+func TestGoogleAPI(t *testing.T) {
+	checkString(t, protoAPI)
+}
+
+func TestSimple(t *testing.T) {
+	checkString(t, protoSimple)
 }
 
 func TestError(t *testing.T) {
