@@ -41,7 +41,7 @@ message outer {
   repeated int64 foooozy = 4;
   //repeated int32 samples = 4 [packed=true];
   EnumAllowingAlias enum_field =3;
-  //map<int32, string> my_map = 4;
+  map<int32, string> my_map = 4;
 }
 
 service Limits {
