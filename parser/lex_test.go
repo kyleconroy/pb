@@ -38,7 +38,8 @@ message outer {
     UNKNOWN = 0;
     STARTED = 1;
   }
-  //repeated inner inner_message = 2;
+  repeated int64 foooozy = 4;
+  //repeated int32 samples = 4 [packed=true];
   EnumAllowingAlias enum_field =3;
   //map<int32, string> my_map = 4;
 }

@@ -73,6 +73,21 @@ func (m *Message) End() token.Pos {
 	return token.Pos(0)
 }
 
+type MessageField struct {
+	Name     Ident
+	Number   BasicLit
+	Type     Ident
+	Repeated *Ident
+}
+
+func (m *MessageField) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (m *MessageField) End() token.Pos {
+	return token.Pos(0)
+}
+
 type EmptyStmt struct {
 	Semicolon token.Pos // position of following ";"
 }

@@ -289,13 +289,21 @@ func lexIdentOrKeyword(l *lexer) stateFn {
 			l.backup()
 			word := l.input[l.start:l.pos]
 			switch i := key[word]; {
+			case i == itemImport || i == itemSyntax || i == itemPackage:
+				// When we're inside {} brackets, syntax import and package aren't keywords
+				if l.braceDepth > 0 {
+					l.emit(itemIdent)
+				} else {
+					l.emit(i)
+				}
+				return lexSchema
 			case i == itemEnum || i == itemMessage || i == itemService || i == itemRPC:
 				l.emit(i)
 				return lexIdent
-			case i == itemReturns || i == itemOption || i == itemRepeated || i == itemImport || i == itemSyntax:
+			case i == itemReturns || i == itemOption || i == itemRepeated:
 				l.emit(i)
 				return lexSchema
-			case i == itemMap || i == itemImportPublic || i == itemImportWeak || i == itemPackage:
+			case i == itemMap || i == itemImportPublic || i == itemImportWeak:
 				l.emit(i)
 				return lexSchema
 			case word == "true" || word == "false":
