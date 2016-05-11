@@ -29,7 +29,6 @@ enum EnumAllowingAlias {
 }
 
 message outer {
-  //option (my_option).a = true;
   message inner {   // Level 2
     int64 ival = 1;
   } 
@@ -39,9 +38,20 @@ message outer {
     STARTED = 1;
   }
   repeated int64 foooozy = 4;
-  //repeated int32 samples = 4 [packed=true];
   EnumAllowingAlias enum_field =3;
   map<int32, string> my_map = 4;
+
+  //option (my_option).a = true;
+
+  //repeated int32 samples = 4 [packed=true];
+
+  //oneof foo {
+  //  string name = 4;
+  //  SubMessage sub_message = 9;
+  //}
+
+  //reserved 2, 15, 9 to 11;
+  //reserved "foo", "bar";
 }
 
 service Limits {

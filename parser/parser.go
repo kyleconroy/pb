@@ -67,9 +67,11 @@ func (t *tree) parse() (*ast.File, error) {
 			}
 			t.f.Nodes = append(t.f.Nodes, node)
 		case token.typ == itemService:
-			if err := t.parseService(); err != nil {
+			node, err := t.parseService()
+			if err != nil {
 				return t.f, err
 			}
+			t.f.Nodes = append(t.f.Nodes, node)
 		case token.typ == itemEnum:
 			node, err := t.parseEnum()
 			if err != nil {
@@ -312,40 +314,54 @@ func (t *tree) parseEnum() (ast.Node, error) {
 	}
 }
 
-func (t *tree) parseService() error {
-	tok := t.nextNonComment()
-	if tok.typ != itemIdent {
-		return fmt.Errorf("expected ident, found %s", tok)
-	}
-	msg := ast.Service{
-		Name: ast.Ident{Name: tok.val},
+func (t *tree) parseService() (ast.Node, error) {
+	name := t.nextNonComment()
+	if name.typ != itemIdent {
+		return nil, fmt.Errorf("expected ident, found %s", name)
 	}
 
-	tok = t.nextNonComment()
-	if tok.typ != itemLeftBrace {
-		return fmt.Errorf("expected {, found %s", tok)
+	srv := ast.Service{
+		Name: ast.Ident{Name: name.val},
+		Body: []ast.Node{},
 	}
-	depth := 1
+
+	lBrace := t.nextNonComment()
+	if lBrace.typ != itemLeftBrace {
+		return nil, fmt.Errorf("expected {, found %s", lBrace)
+	}
 
 	for {
-		switch t.nextNonComment().typ {
-		case itemLeftBrace:
-			depth++
-		case itemRightBrace:
-			depth--
-			if depth == 0 {
-				t.f.Nodes = append(t.f.Nodes, &msg)
-				return nil
+		switch tok := t.nextNonComment(); {
+		case tok.typ == itemSemiColon:
+			srv.Body = append(srv.Body, &ast.EmptyStmt{Semicolon: token.Pos(0)})
+		case tok.typ == itemOption:
+			// Should be constant here, not bool
+			toks, err := t.expect(itemIdent, itemEq, itemBoolLit, itemSemiColon)
+			if err != nil {
+				return nil, err
 			}
-		case itemEOF:
-			return fmt.Errorf("error")
-		case itemError:
-			return fmt.Errorf("error")
+			srv.Body = append(srv.Body, &ast.Option{
+				Names:    []ast.Ident{{Name: toks[0].val}},
+				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
+			})
+		case tok.typ == itemRPC:
+			toks, err := t.expect(itemIdent, itemLeftParen, itemIdent, itemRightParen,
+				itemReturns, itemLeftParen, itemIdent, itemRightParen,
+				itemLeftBrace, itemRightBrace)
+			if err != nil {
+				return nil, err
+			}
+			srv.Body = append(srv.Body, &ast.RPC{
+				Name:    ast.Ident{Name: toks[0].val},
+				InType:  ast.Ident{Name: toks[2].val},
+				OutType: ast.Ident{Name: toks[6].val},
+			})
+		case tok.typ == itemRightBrace:
+			return &srv, nil
 		default:
+			return nil, fmt.Errorf("unexpected token in enum: %s", tok)
 		}
 	}
-
-	return nil
 }
 
 // nextNonSpace returns the next non-space token.

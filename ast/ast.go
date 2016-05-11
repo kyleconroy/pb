@@ -161,6 +161,20 @@ func (s *Service) End() token.Pos {
 	return token.Pos(0)
 }
 
+type RPC struct {
+	Name    Ident
+	InType  Ident
+	OutType Ident
+}
+
+func (r *RPC) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (r *RPC) End() token.Pos {
+	return token.Pos(0)
+}
+
 type Package struct {
 }
 
