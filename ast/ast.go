@@ -44,6 +44,14 @@ type Ident struct {
 	Name    string    // identifier name
 }
 
+func (i *Ident) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (i *Ident) End() token.Pos {
+	return token.Pos(0)
+}
+
 type Expr struct {
 }
 
@@ -73,10 +81,24 @@ func (m *Message) End() token.Pos {
 	return token.Pos(0)
 }
 
+type MapType struct {
+	Map   token.Pos // position of "map" keyword
+	Key   Ident
+	Value Ident
+}
+
+func (m *MapType) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (m *MapType) End() token.Pos {
+	return token.Pos(0)
+}
+
 type MessageField struct {
 	Name     Ident
 	Number   BasicLit
-	Type     Ident
+	Type     Node
 	Repeated *Ident
 }
 

@@ -227,7 +227,7 @@ func (t *tree) parseMessage() (ast.Node, error) {
 			}
 			msg.Body = append(msg.Body, &ast.MessageField{
 				Repeated: &ast.Ident{Name: tok.val},
-				Type:     ast.Ident{Name: toks[0].val},
+				Type:     &ast.Ident{Name: toks[0].val},
 				Name:     ast.Ident{Name: toks[1].val},
 				Number:   ast.BasicLit{Kind: token.INT, Value: toks[3].val},
 			})
@@ -237,7 +237,24 @@ func (t *tree) parseMessage() (ast.Node, error) {
 				return nil, err
 			}
 			msg.Body = append(msg.Body, &ast.MessageField{
-				Type:   ast.Ident{Name: tok.val},
+				Type:   &ast.Ident{Name: tok.val},
+				Name:   ast.Ident{Name: toks[0].val},
+				Number: ast.BasicLit{Kind: token.INT, Value: toks[2].val},
+			})
+		case tok.typ == itemMap:
+			mapt, err := t.expect(itemLeftMap, itemIdent, itemComma, itemIdent, itemRightMap)
+			if err != nil {
+				return nil, err
+			}
+			toks, err := t.expect(itemIdent, itemEq, itemIntLit, itemSemiColon)
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, &ast.MessageField{
+				Type: &ast.MapType{
+					Key:   ast.Ident{Name: mapt[1].val},
+					Value: ast.Ident{Name: mapt[3].val},
+				},
 				Name:   ast.Ident{Name: toks[0].val},
 				Number: ast.BasicLit{Kind: token.INT, Value: toks[2].val},
 			})
