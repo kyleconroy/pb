@@ -67,7 +67,7 @@ func (t *tree) parse() (*ast.File, error) {
 			}
 			t.f.Nodes = append(t.f.Nodes, node)
 		case token.typ == itemService:
-			node, err := t.parseService()
+			node, err := t.parseService(token)
 			if err != nil {
 				return t.f, err
 			}
@@ -314,15 +314,15 @@ func (t *tree) parseEnum() (ast.Node, error) {
 	}
 }
 
-func (t *tree) parseService() (ast.Node, error) {
+func (t *tree) parseService(in item) (ast.Node, error) {
 	name := t.nextNonComment()
 	if name.typ != itemIdent {
 		return nil, fmt.Errorf("expected ident, found %s", name)
 	}
 
 	srv := ast.Service{
-		Name: ast.Ident{Name: name.val},
-		Body: []ast.Node{},
+		Service: token.Pos(in.pos),
+		Name:    ast.Ident{NamePos: token.Pos(name.pos), Name: name.val},
 	}
 
 	lBrace := t.nextNonComment()
@@ -330,17 +330,22 @@ func (t *tree) parseService() (ast.Node, error) {
 		return nil, fmt.Errorf("expected {, found %s", lBrace)
 	}
 
+	blk := ast.BlockStmt{
+		Opening: token.Pos(lBrace.pos),
+		List:    []ast.Node{},
+	}
+
 	for {
 		switch tok := t.nextNonComment(); {
 		case tok.typ == itemSemiColon:
-			srv.Body = append(srv.Body, &ast.EmptyStmt{Semicolon: token.Pos(0)})
+			blk.List = append(blk.List, &ast.EmptyStmt{Semicolon: token.Pos(0)})
 		case tok.typ == itemOption:
 			// Should be constant here, not bool
 			toks, err := t.expect(itemIdent, itemEq, itemBoolLit, itemSemiColon)
 			if err != nil {
 				return nil, err
 			}
-			srv.Body = append(srv.Body, &ast.Option{
+			blk.List = append(blk.List, &ast.Option{
 				Names:    []ast.Ident{{Name: toks[0].val}},
 				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
 			})
@@ -351,12 +356,15 @@ func (t *tree) parseService() (ast.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			srv.Body = append(srv.Body, &ast.RPC{
-				Name:    ast.Ident{Name: toks[0].val},
-				InType:  ast.Ident{Name: toks[2].val},
-				OutType: ast.Ident{Name: toks[6].val},
+			blk.List = append(blk.List, &ast.RPC{
+				RPC:     token.Pos(tok.pos),
+				Name:    ast.Ident{Name: toks[0].val, NamePos: token.Pos(toks[0].pos)},
+				InType:  ast.Ident{Name: toks[2].val, NamePos: token.Pos(toks[2].pos)},
+				OutType: ast.Ident{Name: toks[6].val, NamePos: token.Pos(toks[6].pos)},
 			})
 		case tok.typ == itemRightBrace:
+			blk.Closing = token.Pos(tok.pos)
+			srv.Body = &blk
 			return &srv, nil
 		default:
 			return nil, fmt.Errorf("unexpected token in enum: %s", tok)

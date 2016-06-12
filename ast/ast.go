@@ -149,8 +149,9 @@ func (e *EnumField) End() token.Pos {
 }
 
 type Service struct {
-	Name Ident
-	Body []Node
+	Service token.Pos
+	Name    Ident
+	Body    *BlockStmt
 }
 
 func (s *Service) Pos() token.Pos {
@@ -161,7 +162,22 @@ func (s *Service) End() token.Pos {
 	return token.Pos(0)
 }
 
+type BlockStmt struct {
+	Opening token.Pos // position of opening parenthesis/brace, if any
+	List    []Node
+	Closing token.Pos // position of closing parenthesis/brace, if any
+}
+
+func (s *BlockStmt) Pos() token.Pos {
+	return s.Opening
+}
+
+func (s *BlockStmt) End() token.Pos {
+	return s.Closing
+}
+
 type RPC struct {
+	RPC     token.Pos
 	Name    Ident
 	InType  Ident
 	OutType Ident
