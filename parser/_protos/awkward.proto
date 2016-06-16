@@ -1,0 +1,50 @@
+// This is an example of a strangely formatted proto file
+syntax = "proto3";
+
+import public "other.proto";
+
+option java_package = "com.example.foo";
+
+message message {
+}
+
+enum EnumAllowingAlias {
+  ;
+
+  ;
+  option allow_alias = true;
+  UNKNOWN = 0;
+  STARTED = 1;
+  //RUNNING = 2 [(custom_option) = "hello world"];
+}
+
+message outer {
+  message inner {   // Level 2
+    int64 ival = 1;
+  } 
+  enum OtherEnum {
+    option allow_alias = true;
+    UNKNOWN = 0;
+    STARTED = 1;
+  }
+  repeated int64 foooozy = 4;
+  EnumAllowingAlias enum_field =3;
+  map<int32, string> my_map = 4;
+
+  //option (my_option).a = true;
+
+  //repeated int32 samples = 4 [packed=true];
+
+  //oneof foo {
+  //  string name = 4;
+  //  SubMessage sub_message = 9;
+  //}
+
+  //reserved 2, 15, 9 to 11;
+  //reserved "foo", "bar";
+}
+
+service Limits {
+  rpc Get(LimitsGetReq) returns (AccountLimits) {}
+  rpc Set(LimitsSetReq) returns (Empty) {}
+}

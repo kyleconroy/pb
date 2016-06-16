@@ -81,6 +81,20 @@ func (m *Message) End() token.Pos {
 	return token.Pos(0)
 }
 
+type OneOf struct {
+	Name  Ident
+	Body  []Node
+	OneOf token.Pos // position of "oneof" keyword
+}
+
+func (oo *OneOf) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (oo *OneOf) End() token.Pos {
+	return token.Pos(0)
+}
+
 type MapType struct {
 	Map   token.Pos // position of "map" keyword
 	Key   Ident

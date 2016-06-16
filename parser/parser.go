@@ -200,6 +200,12 @@ func (t *tree) parseMessage() (ast.Node, error) {
 		switch tok := t.nextNonComment(); {
 		case tok.typ == itemSemiColon:
 			msg.Body = append(msg.Body, &ast.EmptyStmt{Semicolon: token.Pos(0)})
+		case tok.typ == itemOneOf:
+			nmsg, err := t.parseOneOf()
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, nmsg)
 		case tok.typ == itemMessage:
 			nmsg, err := t.parseMessage()
 			if err != nil {
@@ -212,6 +218,87 @@ func (t *tree) parseMessage() (ast.Node, error) {
 				return nil, err
 			}
 			msg.Body = append(msg.Body, nenum)
+		case tok.typ == itemOption:
+			// Should be constant here, not bool
+			toks, err := t.expect(itemIdent, itemEq, itemBoolLit, itemSemiColon)
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, &ast.Option{
+				Names:    []ast.Ident{{Name: toks[0].val}},
+				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
+			})
+		case tok.typ == itemRepeated:
+			toks, err := t.expect(itemIdent, itemIdent, itemEq, itemIntLit, itemSemiColon)
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, &ast.MessageField{
+				Repeated: &ast.Ident{Name: tok.val},
+				Type:     &ast.Ident{Name: toks[0].val},
+				Name:     ast.Ident{Name: toks[1].val},
+				Number:   ast.BasicLit{Kind: token.INT, Value: toks[3].val},
+			})
+		case tok.typ == itemIdent:
+			toks, err := t.expect(itemIdent, itemEq, itemIntLit, itemSemiColon)
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, &ast.MessageField{
+				Type:   &ast.Ident{Name: tok.val},
+				Name:   ast.Ident{Name: toks[0].val},
+				Number: ast.BasicLit{Kind: token.INT, Value: toks[2].val},
+			})
+		case tok.typ == itemMap:
+			mapt, err := t.expect(itemLeftMap, itemIdent, itemComma, itemIdent, itemRightMap)
+			if err != nil {
+				return nil, err
+			}
+			toks, err := t.expect(itemIdent, itemEq, itemIntLit, itemSemiColon)
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, &ast.MessageField{
+				Type: &ast.MapType{
+					Key:   ast.Ident{Name: mapt[1].val},
+					Value: ast.Ident{Name: mapt[3].val},
+				},
+				Name:   ast.Ident{Name: toks[0].val},
+				Number: ast.BasicLit{Kind: token.INT, Value: toks[2].val},
+			})
+		case tok.typ == itemRightBrace:
+			return &msg, nil
+		default:
+			return nil, fmt.Errorf("unexpected token in message: %s", tok)
+		}
+	}
+}
+
+func (t *tree) parseOneOf() (ast.Node, error) {
+	name := t.nextNonComment()
+	if name.typ != itemIdent {
+		return nil, fmt.Errorf("expected ident, found %s", name)
+	}
+	msg := ast.OneOf{
+		Name: ast.Ident{Name: name.val},
+		Body: []ast.Node{},
+	}
+
+	lBrace := t.nextNonComment()
+	if lBrace.typ != itemLeftBrace {
+		return nil, fmt.Errorf("expected {, found %s", lBrace)
+	}
+
+	for {
+		switch tok := t.nextNonComment(); {
+		case tok.typ == itemSemiColon:
+			msg.Body = append(msg.Body, &ast.EmptyStmt{Semicolon: token.Pos(0)})
+		case tok.typ == itemMessage:
+			nmsg, err := t.parseMessage()
+			if err != nil {
+				return nil, err
+			}
+			msg.Body = append(msg.Body, nmsg)
 		case tok.typ == itemOption:
 			// Should be constant here, not bool
 			toks, err := t.expect(itemIdent, itemEq, itemBoolLit, itemSemiColon)

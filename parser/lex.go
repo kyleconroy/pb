@@ -68,6 +68,7 @@ const (
 	itemKeyword
 	itemSyntax       // syntax
 	itemMessage      // message
+	itemOneOf        // oneof
 	itemEnum         // enum
 	itemImport       // import
 	itemImportWeak   // weak
@@ -263,6 +264,7 @@ var key = map[string]itemType{
 	"service":  itemService,
 	"repeated": itemRepeated,
 	"package":  itemPackage,
+	"oneof":    itemOneOf,
 }
 
 func lexComment(l *lexer) stateFn {
@@ -300,7 +302,7 @@ func lexIdentOrKeyword(l *lexer) stateFn {
 			case i == itemEnum || i == itemMessage || i == itemService || i == itemRPC:
 				l.emit(i)
 				return lexIdent
-			case i == itemReturns || i == itemOption || i == itemRepeated:
+			case i == itemReturns || i == itemOption || i == itemRepeated || i == itemOneOf:
 				l.emit(i)
 				return lexSchema
 			case i == itemMap || i == itemImportPublic || i == itemImportWeak:
