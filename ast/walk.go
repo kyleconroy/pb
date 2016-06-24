@@ -40,7 +40,9 @@ func Walk(v Visitor, node Node) {
 		}
 
 	case *EnumField:
-		Walk(v, n.Name)
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
 
 	case *File:
 		for _, m := range n.Nodes {
@@ -53,14 +55,44 @@ func Walk(v Visitor, node Node) {
 		for _, m := range n.Modifiers {
 			Walk(v, m)
 		}
-		Walk(v, n.Path)
+		if n.Path != nil {
+			Walk(v, n.Path)
+		}
 
 	case *MapType:
-		Walk(v, n.Key)
-		Walk(v, n.Value)
+		if n.Key != nil {
+			Walk(v, n.Key)
+		}
+		if n.Value != nil {
+			Walk(v, n.Value)
+		}
 
 	case *Message:
-		Walk(v, n.Name)
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
+		for _, m := range n.Body {
+			Walk(v, m)
+		}
+
+	case *MessageField:
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
+		if n.Number != nil {
+			Walk(v, n.Number)
+		}
+		if n.Type != nil {
+			Walk(v, n.Type)
+		}
+		if n.Repeated != nil {
+			Walk(v, n.Repeated)
+		}
+
+	case *OneOf:
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
 		for _, m := range n.Body {
 			Walk(v, m)
 		}

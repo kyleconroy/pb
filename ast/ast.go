@@ -174,7 +174,7 @@ func (m *MessageField) End() token.Pos {
 }
 
 type OneOf struct {
-	Name  Ident
+	Name  *Ident
 	Body  []Node
 	OneOf token.Pos // position of "oneof" keyword
 }

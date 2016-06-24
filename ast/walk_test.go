@@ -55,9 +55,19 @@ func TestWalkEnum(t *testing.T) {
 	walk(t, e, []Node{e, e.Body[0], nil, nil})
 }
 
-func TestWalkEnumField(t *testing.T) {
+func TestWalkEmptyEnumField(t *testing.T) {
 	e := &EnumField{}
+	walk(t, e, []Node{e, nil})
+}
+
+func TestWalkEnumField(t *testing.T) {
+	e := &EnumField{Name: &Ident{}}
 	walk(t, e, []Node{e, e.Name, nil, nil})
+}
+
+func TestWalkEmptyFile(t *testing.T) {
+	f := &File{}
+	walk(t, f, []Node{f, nil})
 }
 
 func TestWalkFile(t *testing.T) {
@@ -65,17 +75,42 @@ func TestWalkFile(t *testing.T) {
 	walk(t, f, []Node{f, f.Nodes[0], nil, nil})
 }
 
+func TestWalkEmptyImport(t *testing.T) {
+	im := &Import{}
+	walk(t, im, []Node{im, nil})
+}
+
 func TestWalkImport(t *testing.T) {
-	im := &Import{Modifiers: []*Ident{&Ident{}}}
+	im := &Import{Path: &BasicLit{}, Modifiers: []*Ident{&Ident{}}}
 	walk(t, im, []Node{im, im.Modifiers[0], nil, im.Path, nil, nil})
 }
 
-func TestWalkMapType(t *testing.T) {
+func TestWalkEmptyMapType(t *testing.T) {
 	m := &MapType{}
+	walk(t, m, []Node{m, nil})
+}
+
+func TestWalkMapType(t *testing.T) {
+	m := &MapType{Key: &Ident{}, Value: &Ident{}}
 	walk(t, m, []Node{m, m.Key, nil, m.Value, nil, nil})
 }
 
-func TestWalkMessage(t *testing.T) {
-	m := &Message{Body: []Node{&Ident{}}}
-	walk(t, m, []Node{m, m.Name, nil, m.Body[0], nil, nil})
+func TestWalkEmptyMessageField(t *testing.T) {
+	m := &MessageField{}
+	walk(t, m, []Node{m, nil})
+}
+
+func TestWalkMessageField(t *testing.T) {
+	m := &MessageField{Name: &Ident{}, Number: &BasicLit{}, Repeated: &Ident{}, Type: &Ident{}}
+	walk(t, m, []Node{m, m.Name, nil, m.Number, nil, m.Type, nil, m.Repeated, nil, nil})
+}
+
+func TestWalkEmptyOneOf(t *testing.T) {
+	o := &OneOf{}
+	walk(t, o, []Node{o, nil})
+}
+
+func TestWalkOneOf(t *testing.T) {
+	o := &OneOf{Name: &Ident{}, Body: []Node{&Ident{}}}
+	walk(t, o, []Node{o, o.Name, nil, o.Body[0], nil, nil})
 }

@@ -280,7 +280,7 @@ func (t *tree) parseOneOf() (ast.Node, error) {
 		return nil, fmt.Errorf("expected ident, found %s", name)
 	}
 	msg := ast.OneOf{
-		Name: ast.Ident{Name: name.val},
+		Name: &ast.Ident{Name: name.val},
 		Body: []ast.Node{},
 	}
 
