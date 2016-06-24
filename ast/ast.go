@@ -11,19 +11,9 @@ const (
 	Proto3
 )
 
-type File struct {
-	Syntax syntax
-	Nodes  []Node
-}
-
 type Node interface {
 	Pos() token.Pos // position of first character belonging to the node
 	End() token.Pos // position of first character immediately after the node
-}
-
-type Import struct {
-	Modifiers []Ident
-	Path      BasicLit
 }
 
 type BasicLit struct {
@@ -31,97 +21,26 @@ type BasicLit struct {
 	Value string
 }
 
-func (i *Import) Pos() token.Pos {
+func (bs *BasicLit) Pos() token.Pos {
 	return token.Pos(0)
 }
 
-func (i *Import) End() token.Pos {
+func (bs *BasicLit) End() token.Pos {
 	return token.Pos(0)
 }
 
-type Ident struct {
-	NamePos token.Pos // identifier position
-	Name    string    // identifier name
+type BlockStmt struct {
+	Opening token.Pos // position of opening parenthesis/brace, if any
+	List    []Node
+	Closing token.Pos // position of closing parenthesis/brace, if any
 }
 
-func (i *Ident) Pos() token.Pos {
-	return token.Pos(0)
+func (s *BlockStmt) Pos() token.Pos {
+	return s.Opening
 }
 
-func (i *Ident) End() token.Pos {
-	return token.Pos(0)
-}
-
-type Expr struct {
-}
-
-type Option struct {
-	Names    []Ident
-	Constant BasicLit
-}
-
-func (o *Option) Pos() token.Pos {
-	return token.Pos(0)
-}
-
-func (o *Option) End() token.Pos {
-	return token.Pos(0)
-}
-
-type Message struct {
-	Name Ident
-	Body []Node
-}
-
-func (m *Message) Pos() token.Pos {
-	return token.Pos(0)
-}
-
-func (m *Message) End() token.Pos {
-	return token.Pos(0)
-}
-
-type OneOf struct {
-	Name  Ident
-	Body  []Node
-	OneOf token.Pos // position of "oneof" keyword
-}
-
-func (oo *OneOf) Pos() token.Pos {
-	return token.Pos(0)
-}
-
-func (oo *OneOf) End() token.Pos {
-	return token.Pos(0)
-}
-
-type MapType struct {
-	Map   token.Pos // position of "map" keyword
-	Key   Ident
-	Value Ident
-}
-
-func (m *MapType) Pos() token.Pos {
-	return token.Pos(0)
-}
-
-func (m *MapType) End() token.Pos {
-	return token.Pos(0)
-}
-
-type MessageField struct {
-	Name     Ident
-	Number   BasicLit
-	Type     Node
-	Repeated *Ident
-}
-
-func (m *MessageField) Pos() token.Pos {
-	return token.Pos(0)
-}
-
-func (m *MessageField) End() token.Pos {
-	return token.Pos(0)
+func (s *BlockStmt) End() token.Pos {
+	return s.Closing
 }
 
 type EmptyStmt struct {
@@ -162,32 +81,126 @@ func (e *EnumField) End() token.Pos {
 	return token.Pos(0)
 }
 
-type Service struct {
-	Service token.Pos
-	Name    Ident
-	Body    *BlockStmt
+type Expr struct {
 }
 
-func (s *Service) Pos() token.Pos {
+func (e *Expr) Pos() token.Pos {
 	return token.Pos(0)
 }
 
-func (s *Service) End() token.Pos {
+func (e *Expr) End() token.Pos {
 	return token.Pos(0)
 }
 
-type BlockStmt struct {
-	Opening token.Pos // position of opening parenthesis/brace, if any
-	List    []Node
-	Closing token.Pos // position of closing parenthesis/brace, if any
+type File struct {
+	Syntax syntax
+	Nodes  []Node
 }
 
-func (s *BlockStmt) Pos() token.Pos {
-	return s.Opening
+type Import struct {
+	Modifiers []*Ident
+	Path      *BasicLit
 }
 
-func (s *BlockStmt) End() token.Pos {
-	return s.Closing
+func (i *Import) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (i *Import) End() token.Pos {
+	return token.Pos(0)
+}
+
+type Ident struct {
+	NamePos token.Pos // identifier position
+	Name    string    // identifier name
+}
+
+func (i *Ident) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (i *Ident) End() token.Pos {
+	return token.Pos(0)
+}
+
+type MapType struct {
+	Map   token.Pos // position of "map" keyword
+	Key   Ident
+	Value Ident
+}
+
+func (m *MapType) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (m *MapType) End() token.Pos {
+	return token.Pos(0)
+}
+
+type Message struct {
+	Name Ident
+	Body []Node
+}
+
+func (m *Message) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (m *Message) End() token.Pos {
+	return token.Pos(0)
+}
+
+type MessageField struct {
+	Name     Ident
+	Number   BasicLit
+	Type     Node
+	Repeated *Ident
+}
+
+func (m *MessageField) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (m *MessageField) End() token.Pos {
+	return token.Pos(0)
+}
+
+type OneOf struct {
+	Name  Ident
+	Body  []Node
+	OneOf token.Pos // position of "oneof" keyword
+}
+
+func (oo *OneOf) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (oo *OneOf) End() token.Pos {
+	return token.Pos(0)
+}
+
+type Option struct {
+	Names    []Ident
+	Constant BasicLit
+}
+
+func (o *Option) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (o *Option) End() token.Pos {
+	return token.Pos(0)
+}
+
+type Package struct {
+}
+
+func (p *Package) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (p *Package) End() token.Pos {
+	return token.Pos(0)
 }
 
 type RPC struct {
@@ -205,13 +218,16 @@ func (r *RPC) End() token.Pos {
 	return token.Pos(0)
 }
 
-type Package struct {
+type Service struct {
+	Service token.Pos
+	Name    Ident
+	Body    *BlockStmt
 }
 
-func (p *Package) Pos() token.Pos {
+func (s *Service) Pos() token.Pos {
 	return token.Pos(0)
 }
 
-func (p *Package) End() token.Pos {
+func (s *Service) End() token.Pos {
 	return token.Pos(0)
 }
