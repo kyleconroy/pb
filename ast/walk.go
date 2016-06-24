@@ -97,6 +97,36 @@ func Walk(v Visitor, node Node) {
 			Walk(v, m)
 		}
 
+	case *Option:
+		for _, m := range n.Names {
+			Walk(v, m)
+		}
+		if n.Constant != nil {
+			Walk(v, n.Constant)
+		}
+
+	case *Package:
+		// TODO: Add fields to Package
+
+	case *RPC:
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
+		if n.InType != nil {
+			Walk(v, n.InType)
+		}
+		if n.OutType != nil {
+			Walk(v, n.OutType)
+		}
+
+	case *Service:
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
+		if n.Body != nil {
+			Walk(v, n.Body)
+		}
+
 	default:
 		panic(fmt.Sprintf("ast.Walk: unexpected node type %T", n))
 	}

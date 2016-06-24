@@ -173,10 +173,10 @@ func (t *tree) parseOption() error {
 	}
 
 	t.f.Nodes = append(t.f.Nodes, &ast.Option{
-		Names: []ast.Ident{
+		Names: []*ast.Ident{
 			{Name: ident.val},
 		},
-		Constant: con,
+		Constant: &con,
 	})
 	return nil
 }
@@ -225,8 +225,8 @@ func (t *tree) parseMessage() (ast.Node, error) {
 				return nil, err
 			}
 			msg.Body = append(msg.Body, &ast.Option{
-				Names:    []ast.Ident{{Name: toks[0].val}},
-				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
+				Names:    []*ast.Ident{{Name: toks[0].val}},
+				Constant: &ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
 			})
 		case tok.typ == itemRepeated:
 			toks, err := t.expect(itemIdent, itemIdent, itemEq, itemIntLit, itemSemiColon)
@@ -306,8 +306,8 @@ func (t *tree) parseOneOf() (ast.Node, error) {
 				return nil, err
 			}
 			msg.Body = append(msg.Body, &ast.Option{
-				Names:    []ast.Ident{{Name: toks[0].val}},
-				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
+				Names:    []*ast.Ident{{Name: toks[0].val}},
+				Constant: &ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
 			})
 		case tok.typ == itemRepeated:
 			toks, err := t.expect(itemIdent, itemIdent, itemEq, itemIntLit, itemSemiColon)
@@ -381,8 +381,8 @@ func (t *tree) parseEnum() (ast.Node, error) {
 				return nil, err
 			}
 			msg.Body = append(msg.Body, &ast.Option{
-				Names:    []ast.Ident{{Name: toks[0].val}},
-				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
+				Names:    []*ast.Ident{{Name: toks[0].val}},
+				Constant: &ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
 			})
 		case tok.typ == itemIdent:
 			toks, err := t.expect(itemEq, itemIntLit, itemSemiColon)
@@ -409,7 +409,7 @@ func (t *tree) parseService(in item) (ast.Node, error) {
 
 	srv := ast.Service{
 		Service: token.Pos(in.pos),
-		Name:    ast.Ident{NamePos: token.Pos(name.pos), Name: name.val},
+		Name:    &ast.Ident{NamePos: token.Pos(name.pos), Name: name.val},
 	}
 
 	lBrace := t.nextNonComment()
@@ -433,8 +433,8 @@ func (t *tree) parseService(in item) (ast.Node, error) {
 				return nil, err
 			}
 			blk.List = append(blk.List, &ast.Option{
-				Names:    []ast.Ident{{Name: toks[0].val}},
-				Constant: ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
+				Names:    []*ast.Ident{{Name: toks[0].val}},
+				Constant: &ast.BasicLit{Kind: token.BOOL, Value: toks[2].val},
 			})
 		case tok.typ == itemRPC:
 			toks, err := t.expect(itemIdent, itemLeftParen, itemIdent, itemRightParen,
@@ -445,9 +445,9 @@ func (t *tree) parseService(in item) (ast.Node, error) {
 			}
 			blk.List = append(blk.List, &ast.RPC{
 				RPC:     token.Pos(tok.pos),
-				Name:    ast.Ident{Name: toks[0].val, NamePos: token.Pos(toks[0].pos)},
-				InType:  ast.Ident{Name: toks[2].val, NamePos: token.Pos(toks[2].pos)},
-				OutType: ast.Ident{Name: toks[6].val, NamePos: token.Pos(toks[6].pos)},
+				Name:    &ast.Ident{Name: toks[0].val, NamePos: token.Pos(toks[0].pos)},
+				InType:  &ast.Ident{Name: toks[2].val, NamePos: token.Pos(toks[2].pos)},
+				OutType: &ast.Ident{Name: toks[6].val, NamePos: token.Pos(toks[6].pos)},
 			})
 		case tok.typ == itemRightBrace:
 			blk.Closing = token.Pos(tok.pos)

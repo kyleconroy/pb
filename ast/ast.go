@@ -188,8 +188,8 @@ func (oo *OneOf) End() token.Pos {
 }
 
 type Option struct {
-	Names    []Ident
-	Constant BasicLit
+	Names    []*Ident
+	Constant *BasicLit
 }
 
 func (o *Option) Pos() token.Pos {
@@ -213,9 +213,9 @@ func (p *Package) End() token.Pos {
 
 type RPC struct {
 	RPC     token.Pos
-	Name    Ident
-	InType  Ident
-	OutType Ident
+	Name    *Ident
+	InType  *Ident
+	OutType *Ident
 }
 
 func (r *RPC) Pos() token.Pos {
@@ -228,7 +228,7 @@ func (r *RPC) End() token.Pos {
 
 type Service struct {
 	Service token.Pos
-	Name    Ident
+	Name    *Ident
 	Body    *BlockStmt
 }
 
