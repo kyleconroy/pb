@@ -32,6 +32,21 @@ func Walk(v Visitor, node Node) {
 			Walk(v, m)
 		}
 
+	case *EmptyStmt, *Expr:
+
+	case *Enum:
+		for _, m := range n.Body {
+			Walk(v, m)
+		}
+
+	case *EnumField:
+		Walk(v, n.Name)
+
+	case *File:
+		for _, m := range n.Nodes {
+			Walk(v, m)
+		}
+
 	case *Ident:
 
 	case *Import:
@@ -39,6 +54,16 @@ func Walk(v Visitor, node Node) {
 			Walk(v, m)
 		}
 		Walk(v, n.Path)
+
+	case *MapType:
+		Walk(v, n.Key)
+		Walk(v, n.Value)
+
+	case *Message:
+		Walk(v, n.Name)
+		for _, m := range n.Body {
+			Walk(v, m)
+		}
 
 	default:
 		panic(fmt.Sprintf("ast.Walk: unexpected node type %T", n))

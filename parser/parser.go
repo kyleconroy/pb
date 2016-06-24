@@ -114,7 +114,7 @@ func (t *tree) parsePackage() error {
 }
 
 func (t *tree) parseImport() error {
-	idents := []ast.Ident{}
+	idents := []*ast.Ident{}
 	seen := map[itemType]struct{}{}
 	for {
 		switch tok := t.nextNonComment(); {
@@ -123,14 +123,14 @@ func (t *tree) parseImport() error {
 				return fmt.Errorf("Multiple %s modifiers found", tok.val)
 			}
 			seen[tok.typ] = struct{}{}
-			idents = append(idents, ast.Ident{Name: tok.val})
+			idents = append(idents, &ast.Ident{Name: tok.val})
 		case tok.typ == itemStrLit:
 			if end := t.nextNonComment(); end.typ != itemSemiColon {
 				return fmt.Errorf("Incorrect token: %s", end)
 			}
 			t.f.Nodes = append(t.f.Nodes, &ast.Import{
 				Modifiers: idents,
-				Path:      ast.BasicLit{Value: tok.val, Kind: token.STRING},
+				Path:      &ast.BasicLit{Value: tok.val, Kind: token.STRING},
 			})
 			return nil
 		default:
@@ -187,7 +187,7 @@ func (t *tree) parseMessage() (ast.Node, error) {
 		return nil, fmt.Errorf("expected ident, found %s", name)
 	}
 	msg := ast.Message{
-		Name: ast.Ident{Name: name.val},
+		Name: &ast.Ident{Name: name.val},
 		Body: []ast.Node{},
 	}
 
@@ -236,8 +236,8 @@ func (t *tree) parseMessage() (ast.Node, error) {
 			msg.Body = append(msg.Body, &ast.MessageField{
 				Repeated: &ast.Ident{Name: tok.val},
 				Type:     &ast.Ident{Name: toks[0].val},
-				Name:     ast.Ident{Name: toks[1].val},
-				Number:   ast.BasicLit{Kind: token.INT, Value: toks[3].val},
+				Name:     &ast.Ident{Name: toks[1].val},
+				Number:   &ast.BasicLit{Kind: token.INT, Value: toks[3].val},
 			})
 		case tok.typ == itemIdent:
 			toks, err := t.expect(itemIdent, itemEq, itemIntLit, itemSemiColon)
@@ -246,8 +246,8 @@ func (t *tree) parseMessage() (ast.Node, error) {
 			}
 			msg.Body = append(msg.Body, &ast.MessageField{
 				Type:   &ast.Ident{Name: tok.val},
-				Name:   ast.Ident{Name: toks[0].val},
-				Number: ast.BasicLit{Kind: token.INT, Value: toks[2].val},
+				Name:   &ast.Ident{Name: toks[0].val},
+				Number: &ast.BasicLit{Kind: token.INT, Value: toks[2].val},
 			})
 		case tok.typ == itemMap:
 			mapt, err := t.expect(itemLeftMap, itemIdent, itemComma, itemIdent, itemRightMap)
@@ -260,11 +260,11 @@ func (t *tree) parseMessage() (ast.Node, error) {
 			}
 			msg.Body = append(msg.Body, &ast.MessageField{
 				Type: &ast.MapType{
-					Key:   ast.Ident{Name: mapt[1].val},
-					Value: ast.Ident{Name: mapt[3].val},
+					Key:   &ast.Ident{Name: mapt[1].val},
+					Value: &ast.Ident{Name: mapt[3].val},
 				},
-				Name:   ast.Ident{Name: toks[0].val},
-				Number: ast.BasicLit{Kind: token.INT, Value: toks[2].val},
+				Name:   &ast.Ident{Name: toks[0].val},
+				Number: &ast.BasicLit{Kind: token.INT, Value: toks[2].val},
 			})
 		case tok.typ == itemRightBrace:
 			return &msg, nil
@@ -317,8 +317,8 @@ func (t *tree) parseOneOf() (ast.Node, error) {
 			msg.Body = append(msg.Body, &ast.MessageField{
 				Repeated: &ast.Ident{Name: tok.val},
 				Type:     &ast.Ident{Name: toks[0].val},
-				Name:     ast.Ident{Name: toks[1].val},
-				Number:   ast.BasicLit{Kind: token.INT, Value: toks[3].val},
+				Name:     &ast.Ident{Name: toks[1].val},
+				Number:   &ast.BasicLit{Kind: token.INT, Value: toks[3].val},
 			})
 		case tok.typ == itemIdent:
 			toks, err := t.expect(itemIdent, itemEq, itemIntLit, itemSemiColon)
@@ -327,8 +327,8 @@ func (t *tree) parseOneOf() (ast.Node, error) {
 			}
 			msg.Body = append(msg.Body, &ast.MessageField{
 				Type:   &ast.Ident{Name: tok.val},
-				Name:   ast.Ident{Name: toks[0].val},
-				Number: ast.BasicLit{Kind: token.INT, Value: toks[2].val},
+				Name:   &ast.Ident{Name: toks[0].val},
+				Number: &ast.BasicLit{Kind: token.INT, Value: toks[2].val},
 			})
 		case tok.typ == itemMap:
 			mapt, err := t.expect(itemLeftMap, itemIdent, itemComma, itemIdent, itemRightMap)
@@ -341,11 +341,11 @@ func (t *tree) parseOneOf() (ast.Node, error) {
 			}
 			msg.Body = append(msg.Body, &ast.MessageField{
 				Type: &ast.MapType{
-					Key:   ast.Ident{Name: mapt[1].val},
-					Value: ast.Ident{Name: mapt[3].val},
+					Key:   &ast.Ident{Name: mapt[1].val},
+					Value: &ast.Ident{Name: mapt[3].val},
 				},
-				Name:   ast.Ident{Name: toks[0].val},
-				Number: ast.BasicLit{Kind: token.INT, Value: toks[2].val},
+				Name:   &ast.Ident{Name: toks[0].val},
+				Number: &ast.BasicLit{Kind: token.INT, Value: toks[2].val},
 			})
 		case tok.typ == itemRightBrace:
 			return &msg, nil
@@ -390,7 +390,7 @@ func (t *tree) parseEnum() (ast.Node, error) {
 				return nil, err
 			}
 			msg.Body = append(msg.Body, &ast.EnumField{
-				Name:  ast.Ident{Name: tok.val},
+				Name:  &ast.Ident{Name: tok.val},
 				Value: toks[1].val,
 			})
 		case tok.typ == itemRightBrace:

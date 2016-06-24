@@ -69,7 +69,7 @@ func (e *Enum) End() token.Pos {
 }
 
 type EnumField struct {
-	Name  Ident
+	Name  *Ident
 	Value string
 }
 
@@ -95,6 +95,14 @@ func (e *Expr) End() token.Pos {
 type File struct {
 	Syntax syntax
 	Nodes  []Node
+}
+
+func (f *File) Pos() token.Pos {
+	return token.Pos(0)
+}
+
+func (f *File) End() token.Pos {
+	return token.Pos(0)
 }
 
 type Import struct {
@@ -125,8 +133,8 @@ func (i *Ident) End() token.Pos {
 
 type MapType struct {
 	Map   token.Pos // position of "map" keyword
-	Key   Ident
-	Value Ident
+	Key   *Ident
+	Value *Ident
 }
 
 func (m *MapType) Pos() token.Pos {
@@ -138,7 +146,7 @@ func (m *MapType) End() token.Pos {
 }
 
 type Message struct {
-	Name Ident
+	Name *Ident
 	Body []Node
 }
 
@@ -151,8 +159,8 @@ func (m *Message) End() token.Pos {
 }
 
 type MessageField struct {
-	Name     Ident
-	Number   BasicLit
+	Name     *Ident
+	Number   *BasicLit
 	Type     Node
 	Repeated *Ident
 }
