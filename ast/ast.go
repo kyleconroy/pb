@@ -56,7 +56,7 @@ func (e *EmptyStmt) End() token.Pos {
 }
 
 type Enum struct {
-	Name Ident
+	Name *Ident
 	Body []Node
 }
 

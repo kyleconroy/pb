@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/kyleconroy/pb/token"
 )
 
 // Pos represents a byte position in the original input text from which
@@ -93,6 +95,7 @@ const (
 
 // lexer holds the state of the scanner.
 type lexer struct {
+	file         *token.File
 	name         string    // the name of the input; used only for error reports
 	input        string    // the string being scanned
 	leftDelim    string    // start of action
@@ -109,11 +112,12 @@ type lexer struct {
 	mapDepth     int       // nesting depth of < >
 }
 
-func lex(name, input string) *lexer {
+func lex(f *token.File, name, input string) *lexer {
 	l := &lexer{
 		name:  name,
 		input: input,
 		items: make(chan item),
+		file:  f,
 	}
 	go l.run() // Concurrently run state machine.
 	return l
@@ -165,6 +169,9 @@ func (l *lexer) next() rune {
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.width = Pos(w)
 	l.pos += l.width
+	if r == '\n' {
+		l.file.AddLine(int(l.pos))
+	}
 	return r
 }
 

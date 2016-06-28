@@ -12,18 +12,27 @@ import (
 
 type Mode int
 
-func ParseFile(src io.Reader, mode Mode) (*ast.File, error) {
+func ParseFile(fset *token.FileSet, filename string, src io.Reader, mode Mode) (*ast.File, error) {
 	payload, err := ioutil.ReadAll(src)
 	if err != nil {
 		return nil, err
 	}
-	t := tree{lex("", string(payload)), &ast.File{Nodes: []ast.Node{}}}
+
+	// TODO: Use token.File for position information
+	f := fset.AddFile(filename, -1, len(payload))
+
+	t := tree{lex(f, filename, string(payload)), &ast.File{Nodes: []ast.Node{}}}
 	return t.parse()
 }
 
 type tree struct {
 	l *lexer
 	f *ast.File
+}
+
+func (t *tree) errorf(tok item, msg string, args ...interface{}) error {
+	prefix := fmt.Sprintf("%s:%d ", t.l.name, t.l.file.Line(token.Pos(tok.pos)))
+	return fmt.Errorf(prefix+msg, args...)
 }
 
 func (t *tree) expect(typs ...itemType) ([]item, error) {
@@ -33,7 +42,7 @@ func (t *tree) expect(typs ...itemType) ([]item, error) {
 		if tok.typ == typ {
 			items[i] = tok
 		} else {
-			return items, fmt.Errorf("Incorrect token: %s", tok)
+			return items, t.errorf(tok, "unexpected token: %s", tok.val)
 		}
 	}
 	return items, nil
@@ -78,12 +87,14 @@ func (t *tree) parse() (*ast.File, error) {
 				return t.f, err
 			}
 			t.f.Nodes = append(t.f.Nodes, node)
+		case token.typ == itemSemiColon:
+			// No action
 		case token.typ == itemError:
 			return t.f, errors.New(token.val)
 		case token.typ == itemEOF:
 			return t.f, nil
 		default:
-			return t.f, fmt.Errorf("Incorrect token: %s", token)
+			return t.f, t.errorf(token, "unexpected token: %s", token.val)
 		}
 	}
 
@@ -361,7 +372,7 @@ func (t *tree) parseEnum() (ast.Node, error) {
 		return nil, fmt.Errorf("expected ident, found %s", name)
 	}
 	msg := ast.Enum{
-		Name: ast.Ident{Name: name.val},
+		Name: &ast.Ident{Name: name.val},
 		Body: []ast.Node{},
 	}
 

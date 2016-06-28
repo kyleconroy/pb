@@ -35,6 +35,7 @@ func TestEmpty(t *testing.T) {
 	for _, n := range []Node{
 		&BasicLit{},
 		&EmptyStmt{},
+		&Enum{},
 		&EnumField{},
 		&Expr{},
 		&File{},
@@ -61,7 +62,7 @@ func TestWalkBlockStmt(t *testing.T) {
 }
 
 func TestWalkEnum(t *testing.T) {
-	e := &Enum{Body: []Node{&Ident{}}}
+	e := &Enum{Name: &Ident{}, Body: []Node{&Ident{}}}
 	walk(t, e, []Node{e, e.Body[0], nil, nil})
 }
 

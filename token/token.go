@@ -1,10 +1,5 @@
 package token
 
-type FileSet struct {
-}
-
-type Pos int
-
 type Token int
 
 const (
@@ -14,7 +9,3 @@ const (
 	STRING        // "abc"
 	BOOL          // true | false
 )
-
-func NewFileSet() *FileSet {
-	return &FileSet{}
-}
