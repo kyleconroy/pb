@@ -1,2 +1,3 @@
 language: go
-- go: 1.7beta2
+go:
+  - 1.7beta2
